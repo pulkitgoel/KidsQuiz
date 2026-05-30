@@ -1,21 +1,57 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# KidQuiz 🎒
 
-# Run and deploy your AI Studio app
+KidQuiz is a smart, interactive educational app built with **Jetpack Compose**. It helps children learn through fun quizzes while providing parents with powerful administrative tools to manage content and track progress.
 
-This contains everything you need to run your app locally.
+## ✨ Features
 
-View your app in AI Studio: https://ai.studio/apps/4535254d-826c-4c71-bf35-fb0e4d3b9326
+### 👦 Kid Mode
+*   **Multiple Subjects:** Math, English, Science, and General Knowledge.
+*   **Gamification:** Earn stars for correct answers and maintain a daily learning streak.
+*   **Daily Goals:** A visual progress bar on the home screen helps kids reach their daily learning targets.
+*   **Timed Challenges:** Optional per-subject timers with alarming sound effects in the final seconds to add excitement.
+*   **Smart Feedback:** Instant 5-star ratings and motivational messages based on performance.
 
-## Run Locally
+### 🛡️ Parent Dashboard (PIN Protected)
+*   **Score History:** Detailed reports of every quiz attempt, including specific questions missed.
+*   **AI Question Generator:** Instantly generate brand-new, age-appropriate questions using OpenAI or DeepSeek.
+*   **Custom Bank Management:** Add your own questions manually or import them via CSV/JSON files.
+*   **Archive System:** Questions are automatically archived after a test to keep the bank fresh. Parents can reactivate them anytime from the dedicated Archive tab.
+*   **Profile Personalization:** Customize the child's name, age, grade, and profile photo.
 
-**Prerequisites:**  [Android Studio](https://developer.android.com/studio)
+## 🛠️ Tech Stack
+*   **UI:** Jetpack Compose
+*   *Database:** Room (Offline local persistence)
+*   **Network:** OkHttp
+*   **AI:** OpenAI & DeepSeek API integrations
+*   **Images:** Coil & Android-Image-Cropper
 
+## 🚀 Getting Started
 
-1. Open Android Studio
-2. Select **Open** and choose the directory containing this project
-3. Allow Android Studio to fix any incompatibilities as it imports the project.
-4. Create a file named `.env` in the project directory and set `GEMINI_API_KEY` in that file to your Gemini API key (see `.env.example` for an example)
-5. Remove this line from the app's `build.gradle.kts` file: `signingConfig = signingConfigs.getByName("debugConfig")`
-6. Run the app on an emulator or physical device
+### Prerequisites
+*   [Android Studio Ladybug](https://developer.android.com/studio) or newer.
+*   Android device running **Android 7.0 (API 24)** or higher.
+
+### Installation
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/pulkitgoel/KidsQuiz.git
+    ```
+2.  **Setup Environment Variables:**
+    Create a file named `.env` in the root directory and add your API keys:
+    ```env
+    OPENAI_API_KEY=your_openai_key_here
+    DEEPSEEK_API_KEY=your_deepseek_key_here
+    ```
+3.  **Open in Android Studio:**
+    *   Select **Open** and choose the `kidquiz` directory.
+    *   Let the Gradle sync complete.
+4.  **Run the App:**
+    *   Connect your device via USB or start an emulator.
+    *   Press **Shift + F10** or the **Run** button.
+
+## 📝 Default Credentials
+The Parent Dashboard is protected by a default PIN: **`1234`**. 
+You can change this anytime in the **Settings & Access** tab inside the dashboard.
+
+---
+Developed by [Pulkit Goel](https://github.com/pulkitgoel)
