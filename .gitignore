@@ -1,0 +1,32 @@
+# Built objects
+*.iml
+*.apk
+*.aar
+*.ap_
+*.dex
+*.class
+
+# Build artifacts
+**/build/
+
+# Android Studio / IntelliJ files
+.idea/
+.gradle/
+.kotlin/
+local.properties
+.env
+debug.keystore
+
+# Captured files
+captures/
+
+# External Native Build
+.externalNativeBuild/
+.cxx/
+
+# Log files
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.MyApplication" parent="android:Theme.DeviceDefault.NoActionBar" />
+
+    <style name="Theme.CropActivity" parent="Theme.AppCompat.Light.DarkActionBar">
+        <item name="colorPrimary">#6750A4</item>
+        <item name="colorPrimaryDark">#4F378B</item>
+        <item name="colorAccent">#6750A4</item>
+    </style>
+</resources>

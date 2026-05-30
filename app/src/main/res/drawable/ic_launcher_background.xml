@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Background Gradient -->
+    <path android:pathData="M0,0h108v108h-108z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="0"
+                android:startY="0"
+                android:endX="108"
+                android:endY="108">
+                <item android:offset="0.0" android:color="#FF6750A4" />
+                <item android:offset="1.0" android:color="#FFE024C3" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    
+    <!-- Funky bubbles/circles pattern -->
+    <path
+        android:fillColor="#33FFFFFF"
+        android:pathData="M20,25 C20,13.95 28.95,5 40,5 C51.05,5 60,13.95 60,25 C60,36.05 51.05,45 40,45 C28.95,45 20,36.05 20,25 Z" />
+    
+    <path
+        android:fillColor="#1AFFFFFF"
+        android:pathData="M75,80 C75,70.06 83.06,62 93,62 C102.94,62 111,70.06 111,80 C111,89.94 102.94,98 93,98 C83.06,98 75,89.94 75,80 Z" />
+
+    <path
+        android:fillColor="#22FFFFFF"
+        android:pathData="M5,82 C5,76.48 9.48,72 15,72 C20.52,72 25,76.48 25,82 C25,87.52 20.52,92 15,92 C9.48,92 5,87.52 5,82 Z" />
+
+    <!-- Funky playful diagonal stripes -->
+    <path
+        android:fillColor="#1CFFFFFF"
+        android:pathData="M-10,35 L50,-25 L65,-10 L5,50 Z" />
+    <path
+        android:fillColor="#15FFFFFF"
+        android:pathData="M25,85 L105,5 L120,20 L40,100 Z" />
+</vector>

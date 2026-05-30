@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Playful sparkles around the mascot -->
+    <path
+        android:fillColor="#55FFFFFF"
+        android:pathData="M15,10 C15,7 16,6 18,6 C16,6 15,5 15,2 C15,5 14,6 12,6 C14,6 15,7 15,10 Z" />
+    <path
+        android:fillColor="#55FFFFFF"
+        android:pathData="M94,50 C94,48 95,47 96,47 C95,47 94,46 94,44 C94,46 93,47 91,47 C93,47 94,48 94,50 Z" />
+
+    <!-- 1. The Playful Question Mark "?" Character Outline/Shadow for High Contrast -->
+    <path
+        android:pathData="M38,36 C38,20 49,15 57,15 C66,15 74,21 74,31 C74,42 66,46 60,50 C55,54 54,59 54,63"
+        android:strokeColor="#FFD84315"
+        android:strokeWidth="15"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+
+    <!-- 2. The Playful Question Mark Main Body Filling (Cheerful Bright Gold) -->
+    <path
+        android:pathData="M38,36 C38,20 49,15 57,15 C66,15 74,21 74,31 C74,42 66,46 60,50 C55,54 54,59 54,63"
+        android:strokeColor="#FFFB8C00"
+        android:strokeWidth="11"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+
+    <!-- 3. Question Mark Highlight Glow (Adding 3D Depth) -->
+    <path
+        android:pathData="M39,35 C39,22 49,17 57,17 C64,17 71,22 71,31"
+        android:strokeColor="#FFFFEE58"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"/>
+    <path
+        android:pathData="M41,33 C41,24 49,19 57,19"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"/>
+
+    <!-- 4. The Dot of the "?": A Cute Glowing Idea Lightbulb Character -->
+    <!-- Bulb Screw Base -->
+    <path
+        android:fillColor="#FF78909C"
+        android:pathData="M51,88 L63,88 L57,94 Z" />
+    <path
+        android:fillColor="#FFCFD8DC"
+        android:pathData="M49,85 L65,85 C66,85 66,87 65,87 L49,87 C48,87 48,85 49,85 Z"/>
+    <path
+        android:fillColor="#FF90A4AE"
+        android:pathData="M51,82 L63,82 C64,82 64,84 63,84 L51,84 C50,84 50,82 51,82 Z"/>
+
+    <!-- Lightbulb Glowing Yellow Glass Body -->
+    <path
+        android:fillColor="#FFFFD54F"
+        android:pathData="M51,82 L63,82 C67,82 69,79 69,74 C69,67 63.5,63 57,63 C50.5,63 45,67 45,74 C45,79 47,82 51,82 Z" />
+    <!-- Bulb Inner Core Highlight -->
+    <path
+        android:fillColor="#FFFFE082"
+        android:pathData="M53,80 C50,79 47.5,77 47.5,74 C47.5,69 51,65.5 57,65.5 C59,65.5 60.5,66 61.5,66.8 C54.5,68 51.5,74 53,80 Z" />
+
+    <!-- Smiley Face on the Dot Lightbulb -->
+    <path
+        android:fillColor="#FF212121"
+        android:pathData="M53.5,71 A1,1 0 1,0 53.5,73 A1,1 0 1,0 53.5,71 Z" />
+    <path
+        android:fillColor="#FF212121"
+        android:pathData="M60.5,71 A1,1 0 1,0 60.5,73 A1,1 0 1,0 60.5,71 Z" />
+    <path
+        android:pathData="M55,75.5 C56,76.5 58,76.5 59,75.5"
+        android:strokeColor="#FF212121"
+        android:strokeWidth="1.2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"/>
+
+    <!-- Smart Nerdy Orange Glasses on the Question Mark Loop -->
+    <!-- Left Lens Rim -->
+    <path
+        android:pathData="M45,28 C39.5,28 35,32.5 35,38 C35,43.5 39.5,48 45,48 C50.5,48 55,43.5 55,38 C55,32.5 50.5,28 45,28 Z"
+        android:strokeColor="#FFFF5722"
+        android:strokeWidth="3.5"
+        android:fillColor="#22FFFFFF"/>
+    <!-- Right Lens Rim -->
+    <path
+        android:pathData="M65,28 C59.5,28 55,32.5 55,38 C55,43.5 59.5,48 65,48 C70.5,48 75,43.5 75,38 C75,32.5 70.5,28 65,28 Z"
+        android:strokeColor="#FFFF5722"
+        android:strokeWidth="3.5"
+        android:fillColor="#22FFFFFF"/>
+    <!-- Glasses Joining Bridge -->
+    <path
+        android:pathData="M53,38 C55,36.5 57,36.5 59,38"
+        android:strokeColor="#FFFF5722"
+        android:strokeWidth="3.3"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"/>
+
+    <!-- Big Smart Friendly Eyes -->
+    <!-- Left Eye Pupil -->
+    <path
+        android:fillColor="#FF212121"
+        android:pathData="M44.5,34 C42.5,34 41,35.5 41,37.5 C41,39.5 42.5,41 44.5,41 C46.5,41 48,39.5 48,37.5 C48,35.5 46.5,34 44.5,34 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M45.6,35 A1,1 0 1,0 45.6,37 A1,1 0 1,0 45.6,35 Z" />
+
+    <!-- Right Eye Pupil -->
+    <path
+        android:fillColor="#FF212121"
+        android:pathData="M64.5,34 C62.5,34 61,35.5 61,37.5 C61,39.5 62.5,41 64.5,41 C66.5,41 68,39.5 68,37.5 C68,35.5 66.5,34 64.5,34 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M65.6,35 A1,1 0 1,0 65.6,37 A1,1 0 1,0 65.6,35 Z" />
+
+    <!-- Happy Question Mark Smile & Red Cheeks -->
+    <path
+        android:pathData="M52,43 C53,44.5 57,44.5 58,43"
+        android:strokeColor="#FF212121"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"/>
+    <path
+        android:fillColor="#FFFF8A80"
+        android:pathData="M37,40 A1.5,1.5 0 1,0 37,43 A1.5,1.5 0 1,0 37,40 Z" />
+    <path
+        android:fillColor="#FFFF8A80"
+        android:pathData="M73,40 A1.5,1.5 0 1,0 73,43 A1.5,1.5 0 1,0 73,40 Z" />
+
+    <!-- Playful Mini Graduation Cap of Genius -->
+    <!-- Base Skull Hat -->
+    <path
+        android:fillColor="#FF263238"
+        android:pathData="M37,23 L61,20 L59,27 C59,27 48,29 37,26 Z" />
+    <!-- Hat Core Diamond -->
+    <path
+        android:fillColor="#FF1C2833"
+        android:pathData="M23,17 L49,7 L74,15 L49,25 Z"
+        android:strokeColor="#FF37474F"
+        android:strokeWidth="0.8"/>
+    <!-- Yellow Hanging Tassel -->
+    <path
+        android:pathData="M49,15 L32,18 L31,23"
+        android:strokeColor="#FFFFD54F"
+        android:strokeWidth="1.2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"/>
+    <path
+        android:fillColor="#FFFFC107"
+        android:pathData="M31,23 A1.2,1.2 0 1,0 31,25.4 A1.2,1.2 0 1,0 31,23 Z" />
+
+    <!-- 5. Floating Highly Relatable Academic Stars of Success -->
+    <!-- Large Star Top-Right -->
+    <path
+        android:fillColor="#FFFFD54F"
+        android:pathData="M81,13 L83,18 L88,18.5 L84,22.5 L85,27.5 L81,25 L77,27.5 L78,22.5 L74,18.5 L79,18 Z" />
+    <!-- Medium Star Middle-Left -->
+    <path
+        android:fillColor="#FFFFEE58"
+        android:pathData="M18,45 L19.2,48 L22.5,48.3 L20,51 L20.5,54 L18,52.5 L15.5,54 L16,51 L13.5,48.3 L16.8,48 Z" />
+
+    <!-- 6. Playful Option Indicator Bubbles (✔ Check and ✖ Cross) representing Quiz -->
+    <!-- Bottom Left Option Check Indicator Circle Component -->
+    <path
+        android:fillColor="#FF2E7D32"
+        android:pathData="M16,68 A7,7 0 1,0 16,82 A7,7 0 1,0 16,68 Z" />
+    <!-- White Inner Checkmark -->
+    <path
+        android:pathData="M12.5,75.5 L15,78 L20,72.5"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2.3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"/>
+
+    <!-- Bottom Right Option Cross Indicator Circle Component -->
+    <path
+        android:fillColor="#FFC62828"
+        android:pathData="M92,68 A7,7 0 1,0 92,82 A7,7 0 1,0 92,68 Z" />
+    <!-- White Inner Cross (Incorrect Choice indicator) -->
+    <path
+        android:pathData="M88.5,72 L95.5,79 M95.5,72 L88.5,79"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2.3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"/>
+
+</vector>
