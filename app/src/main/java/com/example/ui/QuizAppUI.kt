@@ -78,7 +78,7 @@ fun QuizAppUI(viewModel: QuizViewModel) {
     val currentScreen = viewModel.currentScreen
 
     androidx.activity.compose.BackHandler(enabled = currentScreen !is Screen.Home) {
-        if (currentScreen is Screen.ParentDashboard || currentScreen is Screen.ParentEnterPin || currentScreen is Screen.QuizResult || currentScreen is Screen.QuizSession) {
+        if (currentScreen is Screen.ParentDashboard || currentScreen is Screen.ParentEnterPin || currentScreen is Screen.QuizResult || currentScreen is Screen.QuizSession || currentScreen is Screen.NoQuestions) {
             viewModel.navigateTo(Screen.Home)
         }
     }
@@ -138,6 +138,63 @@ fun QuizAppUI(viewModel: QuizViewModel) {
                 }
                 is Screen.ParentDashboard -> {
                     ParentDashboardScreen(viewModel = viewModel)
+                }
+                is Screen.NoQuestions -> {
+                    NoQuestionsScreen(viewModel = viewModel, subject = screen.subject)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun NoQuestionsScreen(viewModel: QuizViewModel, subject: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            shape = RoundedCornerShape(32.dp),
+            colors = CardDefaults.cardColors(containerColor = SleekSurfaceVariant),
+            border = BorderStroke(1.dp, SleekBorderLight),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(32.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                Text(text = "📭", fontSize = 64.sp)
+                
+                Text(
+                    text = "No questions available for $subject!",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Black,
+                    color = SleekPurple,
+                    textAlign = TextAlign.Center
+                )
+
+                Text(
+                    text = "Please ask your parents to set up new questions or reactivate archived ones in the Parent Dashboard.",
+                    fontSize = 15.sp,
+                    color = Color(0xFF49454F),
+                    textAlign = TextAlign.Center,
+                    lineHeight = 22.sp
+                )
+
+                Button(
+                    onClick = { viewModel.navigateTo(Screen.Home) },
+                    colors = ButtonDefaults.buttonColors(containerColor = SleekPurple),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                ) {
+                    Text("Back to Home 🏠", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
             }
         }
@@ -1359,7 +1416,7 @@ fun ParentDashboardScreen(viewModel: QuizViewModel) {
     val allQuestions by viewModel.allQuestions.collectAsState()
     val allAttempts by viewModel.allAttempts.collectAsState()
 
-    var activeTab by remember { mutableStateOf(0) } // 0: Scores, 1: Add Quiz Questions, 2: Goal & PIN Settings, 3: Archive
+    var activeTab by remember { mutableStateOf(0) } // 0: Scores, 1: Add Quiz Questions, 2: Goal & PIN Settings, 3: Archive, 4: Subjects
     val drawerState = androidx.compose.material3.rememberDrawerState(initialValue = androidx.compose.material3.DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
@@ -1402,6 +1459,22 @@ fun ParentDashboardScreen(viewModel: QuizViewModel) {
                     selected = activeTab == 1,
                     onClick = {
                         activeTab = 1
+                        scope.launch { drawerState.close() }
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    colors = androidx.compose.material3.NavigationDrawerItemDefaults.colors(
+                        selectedContainerColor = SleekPurple,
+                        selectedTextColor = Color.White,
+                        selectedIconColor = Color.White,
+                        unselectedTextColor = SleekTextDark
+                    )
+                )
+                androidx.compose.material3.NavigationDrawerItem(
+                    icon = { Text("📚") },
+                    label = { Text("Manage Subjects", fontWeight = FontWeight.Bold) },
+                    selected = activeTab == 4,
+                    onClick = {
+                        activeTab = 4
                         scope.launch { drawerState.close() }
                     },
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
@@ -1491,6 +1564,7 @@ fun ParentDashboardScreen(viewModel: QuizViewModel) {
                                 1 -> "Questions 📝"
                                 2 -> "Settings ⚙️"
                                 3 -> "Archived Bank 🗄️"
+                                4 -> "Manage Subjects 📚"
                                 else -> "Admin Panel 🛠️"
                             },
                             fontSize = 18.sp,
@@ -1513,6 +1587,7 @@ fun ParentDashboardScreen(viewModel: QuizViewModel) {
                     1 -> ParentQuestionsTab(viewModel = viewModel, allQuestions = allQuestions)
                     2 -> ParentSettingsTab(viewModel = viewModel)
                     3 -> ParentArchiveTab(viewModel = viewModel, allQuestions = allQuestions)
+                    4 -> ParentSubjectsTab(viewModel = viewModel)
                 }
             }
         }
@@ -1744,7 +1819,7 @@ fun ParentQuestionsTab(viewModel: QuizViewModel, allQuestions: List<Question>) {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val modes = listOf("Manage Bank 📁", "Add Manually ➕", "AI Generator ✨", "Import File 📤", "Categories 🏷️")
+            val modes = listOf("Manage Bank 📁", "Add Manually ➕", "AI Generator ✨", "Import File 📤")
             modes.forEachIndexed { index, title ->
                 val isSel = activeMode == index
                 Box(
@@ -2514,299 +2589,309 @@ fun ParentQuestionsTab(viewModel: QuizViewModel, allQuestions: List<Question>) {
                         }
                     }
                 }
-                4 -> {
-                    // CATEGORIES & SUBJECTS MANAGEMENT (Mode 4)
-                    val standardTopicSuggestions = remember {
-                        mapOf(
-                            "Math" to listOf("Addition ➕", "Subtraction ➖", "Multiplication ⚔️", "Division ➗", "Fractions 🍰", "Geometry 📐", "Counting 🔢", "Decimals 🪙"),
-                            "English" to listOf("Nouns 🏷️", "Verbs 🏃", "Adjectives ✨", "Pronouns 👥", "Spelling 🔠", "Opposites 🔄", "Punctuation 💬", "Synonyms 👥"),
-                            "Science" to listOf("Plants 🌿", "Planets 🪐", "Water Cycle 💧", "Animals 🦁", "Human Body 🫁", "Gravity 🍎", "Matter States 🧪", "Electricity ⚡"),
-                            "General Knowledge" to listOf("Capitals 🏛️", "Oceans 🌊", "Continents 🗺️", "Landmarks 🗽", "History 📜", "Inventions 💡", "Sports ⚽", "Nature ⛰️")
+            }
+        }
+    }
+}
+
+@Composable
+fun ParentSubjectsTab(viewModel: QuizViewModel) {
+    val standardTopicSuggestions = remember {
+        mapOf(
+            "Math" to listOf("Addition ➕", "Subtraction ➖", "Multiplication ⚔️", "Division ➗", "Fractions 🍰", "Geometry 📐", "Counting 🔢", "Decimals 🪙"),
+            "English" to listOf("Nouns 🏷️", "Verbs 🏃", "Adjectives ✨", "Pronouns 👥", "Spelling 🔠", "Opposites 🔄", "Punctuation 💬", "Synonyms 👥"),
+            "Science" to listOf("Plants 🌿", "Planets 🪐", "Water Cycle 💧", "Animals 🦁", "Human Body 🫁", "Gravity 🍎", "Matter States 🧪", "Electricity ⚡"),
+            "General Knowledge" to listOf("Capitals 🏛️", "Oceans 🌊", "Continents 🗺️", "Landmarks 🗽", "History 📜", "Inventions 💡", "Sports ⚽", "Nature ⛰️")
+        )
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        var newSubjectInput by remember { mutableStateOf("") }
+        var newCategoryInput by remember { mutableStateOf("") }
+        var selectedCatSubject by remember { mutableStateOf("Math") }
+        
+        // SECTION 1: ADD MAIN SUBJECT
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = SleekSurfaceVariant),
+            border = BorderStroke(1.dp, SleekBorderLight)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Add Custom Subject 📚",
+                    fontWeight = FontWeight.Black,
+                    fontSize = 16.sp,
+                    color = SleekPurple
+                )
+                Text(
+                    text = "Create new main subjects that you want to show in the Kids section.",
+                    fontSize = 12.sp,
+                    color = Color(0xFF49454F),
+                    lineHeight = 18.sp
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = newSubjectInput,
+                        onValueChange = { newSubjectInput = it },
+                        label = { Text("Subject Name (e.g. Geography)") },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.Black,
+                            unfocusedTextColor = Color.Black
+                        )
+                    )
+                    
+                    Button(
+                        onClick = {
+                            viewModel.addSubject(newSubjectInput)
+                            newSubjectInput = ""
+                        },
+                        enabled = newSubjectInput.isNotBlank(),
+                        colors = ButtonDefaults.buttonColors(containerColor = SleekPurple),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)
+                    ) {
+                        Text("Add ➕")
+                    }
+                }
+            }
+        }
+
+        Text(
+            text = "Active Subjects:",
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp,
+            color = SleekPurple,
+            modifier = Modifier.padding(top = 8.dp)
+        )
+
+        val allCurrentSubjects = (listOf("Math", "English", "General Knowledge", "Science") + viewModel.customSubjects).distinct()
+        
+        allCurrentSubjects.forEach { subj ->
+            val isCustom = viewModel.customSubjects.contains(subj)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.White, RoundedCornerShape(12.dp))
+                    .border(1.dp, SleekBorderLight, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = subj + if (!isCustom) " (System)" else "",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 15.sp,
+                    color = SleekTextDark
+                )
+                if (isCustom) {
+                    IconButton(
+                        onClick = { viewModel.removeSubject(subj) },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete subject",
+                            tint = Color(0xFFBA1A1A),
+                            modifier = Modifier.size(20.dp)
                         )
                     }
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // SECTION 2: ADD CATEGORY/TOPIC
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = SleekSurfaceVariant),
+            border = BorderStroke(1.dp, SleekBorderLight)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Add Custom Topic under Subject 🏷️",
+                    fontWeight = FontWeight.Black,
+                    fontSize = 16.sp,
+                    color = SleekPurple
+                )
+                Text(
+                    text = "Define specific topics within subjects to help AI strictly generate focused questions.",
+                    fontSize = 12.sp,
+                    color = Color(0xFF49454F),
+                    lineHeight = 18.sp
+                )
+
+                Text(text = "Select Parent Subject:", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = SleekPurple)
+                val combinedSubjects = (listOf("Math", "English", "General Knowledge", "Science") + viewModel.customSubjects).distinct()
+                
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(combinedSubjects) { sub ->
+                        val isSel = selectedCatSubject == sub
+                        Box(
+                            modifier = Modifier
+                                .background(if (isSel) SleekPurple else Color.White, RoundedCornerShape(12.dp))
+                                .border(1.dp, if (isSel) SleekPurple else SleekBorderLight, RoundedCornerShape(12.dp))
+                                .clickable { selectedCatSubject = sub }
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text(text = sub, fontSize = 13.sp, color = if (isSel) Color.White else SleekTextDark)
+                        }
+                    }
+                }
+
+                // Suggestions & Intelligent Search Title
+                val suggestionsList = standardTopicSuggestions[selectedCatSubject] ?: emptyList()
+                val filteredSuggestions = if (newCategoryInput.isBlank()) {
+                    suggestionsList
+                } else {
+                    suggestionsList.filter { it.contains(newCategoryInput, ignoreCase = true) }
+                }
+
+                if (filteredSuggestions.isNotEmpty()) {
+                    Text(
+                        text = "Smart Suggestions (Tap to select):",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        color = Color.Gray
+                    )
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        var newSubjectInput by remember { mutableStateOf("") }
-                        var newCategoryInput by remember { mutableStateOf("") }
-                        var selectedCatSubject by remember { mutableStateOf("Math") }
-                        
-                        // SECTION 1: ADD MAIN SUBJECT
-                        Card(
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = SleekSurfaceVariant),
-                            border = BorderStroke(1.dp, SleekBorderLight)
-                        ) {
-                            Column(
+                        items(filteredSuggestions) { suggestionText ->
+                            val cleanText = suggestionText.substringBefore(" ").trim()
+                            Box(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                                    .background(SleekPurple.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
+                                    .border(1.dp, SleekPurple.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+                                    .clickable { newCategoryInput = cleanText }
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
                             ) {
-                                Text(
-                                    text = "Add Custom Subject 📚",
-                                    fontWeight = FontWeight.Black,
-                                    fontSize = 16.sp,
-                                    color = SleekPurple
-                                )
-                                Text(
-                                    text = "Create new main subjects that you want to show in the Kids section.",
-                                    fontSize = 12.sp,
-                                    color = Color(0xFF49454F),
-                                    lineHeight = 18.sp
-                                )
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    OutlinedTextField(
-                                        value = newSubjectInput,
-                                        onValueChange = { newSubjectInput = it },
-                                        label = { Text("Subject Name (e.g. Geography)") },
-                                        modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(12.dp),
-                                        singleLine = true,
-                                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                                            focusedTextColor = Color.Black,
-                                            unfocusedTextColor = Color.Black
-                                        )
-                                    )
-                                    
-                                    Button(
-                                        onClick = {
-                                            viewModel.addSubject(newSubjectInput)
-                                            newSubjectInput = ""
-                                        },
-                                        enabled = newSubjectInput.isNotBlank(),
-                                        colors = ButtonDefaults.buttonColors(containerColor = SleekPurple),
-                                        shape = RoundedCornerShape(12.dp),
-                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)
-                                    ) {
-                                        Text("Add ➕")
-                                    }
-                                }
-                                
-                                if (viewModel.customSubjects.isNotEmpty()) {
-                                    Text(
-                                        text = "Your custom subjects:",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp,
-                                        color = SleekPurple
-                                    )
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        viewModel.customSubjects.forEach { subj ->
-                                            Row(
-                                                modifier = Modifier
-                                                    .background(Color.White, RoundedCornerShape(12.dp))
-                                                    .border(1.dp, SleekBorderLight, RoundedCornerShape(12.dp))
-                                                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                            ) {
-                                                Text(text = subj, fontSize = 12.sp, color = SleekTextDark, fontWeight = FontWeight.Bold)
-                                                IconButton(
-                                                    onClick = { viewModel.removeSubject(subj) },
-                                                    modifier = Modifier.size(16.dp)
-                                                ) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.Close,
-                                                        contentDescription = "Delete subject",
-                                                        tint = Color.Red,
-                                                        modifier = Modifier.size(12.dp)
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
+                                Text(text = suggestionText, fontSize = 11.sp, color = SleekPurple, fontWeight = FontWeight.Bold)
                             }
                         }
+                    }
+                }
 
-                        // SECTION 2: ADD CATEGORY/TOPIC
-                        Card(
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = SleekSurfaceVariant),
-                            border = BorderStroke(1.dp, SleekBorderLight)
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Text(
-                                    text = "Add Custom Topic under Subject 🏷️",
-                                    fontWeight = FontWeight.Black,
-                                    fontSize = 16.sp,
-                                    color = SleekPurple
-                                )
-                                Text(
-                                    text = "Define specific topics within subjects to help AI strictly generate focused questions.",
-                                    fontSize = 12.sp,
-                                    color = Color(0xFF49454F),
-                                    lineHeight = 18.sp
-                                )
-
-                                Text(text = "Select Parent Subject:", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = SleekPurple)
-                                val combinedSubjects = (listOf("Math", "English", "General Knowledge", "Science") + viewModel.customSubjects).distinct()
-                                
-                                LazyRow(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    items(combinedSubjects) { sub ->
-                                        val isSel = selectedCatSubject == sub
-                                        Box(
-                                            modifier = Modifier
-                                                .background(if (isSel) SleekPurple else Color.White, RoundedCornerShape(12.dp))
-                                                .border(1.dp, if (isSel) SleekPurple else SleekBorderLight, RoundedCornerShape(12.dp))
-                                                .clickable { selectedCatSubject = sub }
-                                                .padding(horizontal = 12.dp, vertical = 6.dp)
-                                        ) {
-                                            Text(text = sub, fontSize = 13.sp, color = if (isSel) Color.White else SleekTextDark)
-                                        }
-                                    }
-                                }
-
-                                // Suggestions & Intelligent Search Title
-                                val suggestionsList = standardTopicSuggestions[selectedCatSubject] ?: emptyList()
-                                val filteredSuggestions = if (newCategoryInput.isBlank()) {
-                                    suggestionsList
-                                } else {
-                                    suggestionsList.filter { it.contains(newCategoryInput, ignoreCase = true) }
-                                }
-
-                                if (filteredSuggestions.isNotEmpty()) {
-                                    Text(
-                                        text = "Smart Suggestions (Tap to select):",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp,
-                                        color = Color.Gray
-                                    )
-                                    LazyRow(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        items(filteredSuggestions) { suggestionText ->
-                                            val cleanText = suggestionText.substringBefore(" ").trim()
-                                            Box(
-                                                modifier = Modifier
-                                                    .background(SleekPurple.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
-                                                    .border(1.dp, SleekPurple.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
-                                                    .clickable { newCategoryInput = cleanText }
-                                                    .padding(horizontal = 10.dp, vertical = 6.dp)
-                                            ) {
-                                                Text(text = suggestionText, fontSize = 11.sp, color = SleekPurple, fontWeight = FontWeight.Bold)
-                                            }
-                                        }
-                                    }
-                                }
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    OutlinedTextField(
-                                        value = newCategoryInput,
-                                        onValueChange = { newCategoryInput = it },
-                                        label = { Text("Topic Name (e.g. Fractions)") },
-                                        modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(12.dp),
-                                        singleLine = true,
-                                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                                            focusedTextColor = Color.Black,
-                                            unfocusedTextColor = Color.Black
-                                        )
-                                    )
-                                    
-                                    Button(
-                                        onClick = {
-                                            viewModel.addCategory(subject = selectedCatSubject, topic = newCategoryInput)
-                                            newCategoryInput = ""
-                                        },
-                                        enabled = newCategoryInput.isNotBlank(),
-                                        colors = ButtonDefaults.buttonColors(containerColor = SleekPurple),
-                                        shape = RoundedCornerShape(12.dp),
-                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)
-                                    ) {
-                                        Text("Add 🏷️")
-                                    }
-                                }
-                            }
-                        }
-
-                        Text(
-                            text = "Your Configured Topics:",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = SleekPurple,
-                            modifier = Modifier.padding(top = 8.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = newCategoryInput,
+                        onValueChange = { newCategoryInput = it },
+                        label = { Text("Topic Name (e.g. Fractions)") },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.Black,
+                            unfocusedTextColor = Color.Black
                         )
+                    )
+                    
+                    Button(
+                        onClick = {
+                            viewModel.addCategory(subject = selectedCatSubject, topic = newCategoryInput)
+                            newCategoryInput = ""
+                        },
+                        enabled = newCategoryInput.isNotBlank(),
+                        colors = ButtonDefaults.buttonColors(containerColor = SleekPurple),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)
+                    ) {
+                        Text("Add 🏷️")
+                    }
+                }
+            }
+        }
 
-                        if (viewModel.customCategories.isEmpty()) {
-                            Text(
-                                text = "No custom topics added yet.",
-                                fontSize = 13.sp,
-                                color = Color.Gray
-                            )
-                        } else {
-                            viewModel.customCategories.forEach { categoryKey ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(Color.White, RoundedCornerShape(12.dp))
-                                        .border(1.dp, SleekBorderLight, RoundedCornerShape(12.dp))
-                                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    val parts = categoryKey.split(":")
-                                    val subLabel = parts.getOrNull(0) ?: ""
-                                    val tpcLabel = parts.getOrNull(1) ?: categoryKey
-                                    Column {
-                                        Text(
-                                            text = tpcLabel,
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontSize = 15.sp,
-                                            color = SleekTextDark
-                                        )
-                                        Text(
-                                            text = "Subject: $subLabel",
-                                            fontWeight = FontWeight.Normal,
-                                            fontSize = 12.sp,
-                                            color = Color.Gray
-                                        )
-                                    }
-                                    IconButton(
-                                        onClick = { viewModel.removeCategory(categoryKey) },
-                                        modifier = Modifier.size(24.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Delete,
-                                            contentDescription = "Delete topic",
-                                            tint = Color(0xFFBA1A1A),
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
+        Text(
+            text = "Your Configured Topics:",
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp,
+            color = SleekPurple,
+            modifier = Modifier.padding(top = 8.dp)
+        )
+
+        if (viewModel.customCategories.isEmpty()) {
+            Text(
+                text = "No custom topics added yet.",
+                fontSize = 13.sp,
+                color = Color.Gray
+            )
+        } else {
+            viewModel.customCategories.forEach { categoryKey ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.White, RoundedCornerShape(12.dp))
+                        .border(1.dp, SleekBorderLight, RoundedCornerShape(12.dp))
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val parts = categoryKey.split(":")
+                    val subLabel = parts.getOrNull(0) ?: ""
+                    val tpcLabel = parts.getOrNull(1) ?: categoryKey
+                    Column {
+                        Text(
+                            text = tpcLabel,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 15.sp,
+                            color = SleekTextDark
+                        )
+                        Text(
+                            text = "Subject: $subLabel",
+                            fontWeight = FontWeight.Normal,
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    }
+                    IconButton(
+                        onClick = { viewModel.removeCategory(categoryKey) },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete topic",
+                            tint = Color(0xFFBA1A1A),
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
             }
         }
     }
 }
+
 
 @Composable
 fun ParentArchiveTab(viewModel: QuizViewModel, allQuestions: List<Question>) {

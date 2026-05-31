@@ -26,6 +26,7 @@ sealed interface Screen {
     data class QuizResult(val subject: String, val score: Int, val total: Int, val starsEarned: Int) : Screen
     object ParentEnterPin : Screen
     object ParentDashboard : Screen
+    data class NoQuestions(val subject: String) : Screen
 }
 
 class QuizViewModel(application: Application) : AndroidViewModel(application) {
@@ -144,6 +145,10 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
     fun startQuiz(subject: String) {
         viewModelScope.launch {
             val sQuestions = repository.getQuestionsBySubject(subject).filter { !it.isArchived }
+            if (sQuestions.isEmpty()) {
+                navigateTo(Screen.NoQuestions(subject))
+                return@launch
+            }
             // Shuffle and pick
             activeQuestions = sQuestions.shuffled().take(questionsPerQuiz)
             currentQuestionIdx = 0
