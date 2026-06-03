@@ -55,6 +55,8 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var questionsPerQuiz by mutableStateOf(preferences.questionsPerQuiz)
         private set
+    var lastClaimedLevel by mutableStateOf(preferences.lastClaimedLevel)
+        private set
 
     // Parent PIN Verification Setup
     var parentPinInput by mutableStateOf("")
@@ -231,6 +233,32 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
             updateDailyGoalCompletion()
 
             navigateTo(Screen.QuizResult(subject, activeScore, totalQs, starsEarned))
+        }
+    }
+
+    fun claimScratchStars(stars: Int) {
+        viewModelScope.launch {
+            preferences.addStars(stars)
+            totalStars = preferences.totalStars
+            updateDailyGoalCompletion()
+        }
+    }
+
+    fun claimLevelUpReward(bonusStars: Int) {
+        viewModelScope.launch {
+            // Calculate current level BEFORE adding bonus stars
+            val currentLevel = (totalStars / 10) + 1
+            // Only claim if there's actually a pending level up
+            if (currentLevel > lastClaimedLevel) {
+                preferences.addStars(bonusStars)
+                totalStars = preferences.totalStars
+                // Set lastClaimedLevel to the NEW current level AFTER bonus stars
+                // so that bonus stars don't create an artificial level-up loop
+                val newCurrentLevel = (totalStars / 10) + 1
+                preferences.lastClaimedLevel = newCurrentLevel
+                lastClaimedLevel = newCurrentLevel
+                updateDailyGoalCompletion()
+            }
         }
     }
 

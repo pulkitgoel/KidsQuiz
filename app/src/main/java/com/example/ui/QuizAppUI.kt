@@ -43,6 +43,7 @@ import android.media.AudioManager
 import android.media.ToneGenerator
 import android.net.Uri
 import coil.compose.AsyncImage
+import com.airbnb.lottie.compose.*
 import com.example.viewmodel.QuizViewModel
 import com.example.viewmodel.Screen
 import com.example.data.Question
@@ -50,6 +51,43 @@ import com.example.data.QuizAttempt
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.composed
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerInputChange
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.withSaveLayer
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.PaintingStyle
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
+
+// Helper for bouncy clicks
+fun Modifier.bouncyClick(onClick: () -> Unit): Modifier = composed {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.9f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "bouncy"
+    )
+    this
+        .scale(scale)
+        .clickable(
+            interactionSource = interactionSource,
+            indication = null,
+            onClick = onClick
+        )
+}
 
 // Sleek Interface Theme Colors
 val SleekPurple = Color(0xFF6750A4)
@@ -84,29 +122,12 @@ fun QuizAppUI(viewModel: QuizViewModel) {
     }
 
 
+    KidsAnimatedBackground()
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(SleekBgLight)
     ) {
-        // Playful background decoration (floating bubble shapes matching the Sleek brand)
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            drawCircle(
-                color = SleekPurple.copy(alpha = 0.04f),
-                radius = 180.dp.toPx(),
-                center = Offset(size.width * 0.1f, size.height * 0.15f)
-            )
-            drawCircle(
-                color = SleekPurple.copy(alpha = 0.05f),
-                radius = 220.dp.toPx(),
-                center = Offset(size.width * 0.85f, size.height * 0.75f)
-            )
-            drawCircle(
-                color = SleekPurple.copy(alpha = 0.03f),
-                radius = 120.dp.toPx(),
-                center = Offset(size.width * 0.8f, size.height * 0.3f)
-            )
-        }
 
         // Screen selection with slide/fade animation for a bubbly, responsive UI
         AnimatedContent(
@@ -202,6 +223,466 @@ fun NoQuestionsScreen(viewModel: QuizViewModel, subject: String) {
 }
 
 @Composable
+fun CorrectAnswerCharacter() {
+    val transition = rememberInfiniteTransition(label = "correct_anim")
+    val bounceY by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = -35f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(450, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "bounce"
+    )
+    val scaleX by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.12f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(450, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "scale"
+    )
+    
+    val sunburstRotation by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(6000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "sunburst"
+    )
+    
+    val eyeWinkScale by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0.1f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                durationMillis = 2000
+                1.0f at 0
+                1.0f at 1600
+                0.1f at 1800
+                1.0f at 2000
+            },
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "wink"
+    )
+
+    val sparkProgress by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "sparks"
+    )
+
+    Box(
+        modifier = Modifier.size(160.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val width = size.width
+            val height = size.height
+            val centerX = width / 2
+            val centerY = height / 2
+            
+            drawIntoCanvas { canvas ->
+                canvas.save()
+                canvas.translate(centerX, centerY)
+                canvas.rotate(sunburstRotation)
+                val rayCount = 8
+                val rayColor = Color(0xFFFFE082).copy(alpha = 0.4f)
+                val rayPath = Path()
+                rayPath.moveTo(0f, 0f)
+                val wedgeAngle = 20f
+                val rayLen = width * 0.7f
+                val rad1 = Math.toRadians(-wedgeAngle.toDouble() / 2)
+                val rad2 = Math.toRadians(wedgeAngle.toDouble() / 2)
+                rayPath.lineTo((rayLen * Math.cos(rad1)).toFloat(), (rayLen * Math.sin(rad1)).toFloat())
+                rayPath.lineTo((rayLen * Math.cos(rad2)).toFloat(), (rayLen * Math.sin(rad2)).toFloat())
+                rayPath.close()
+                
+                for (r in 0 until rayCount) {
+                    drawPath(path = rayPath, color = rayColor)
+                    canvas.rotate(360f / rayCount)
+                }
+                canvas.restore()
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .size(110.dp)
+                .graphicsLayer {
+                    translationY = bounceY
+                    this.scaleX = scaleX
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val width = size.width
+                val height = size.height
+                val centerX = width / 2
+                val centerY = height / 2
+                
+                val path = Path()
+                val outerRadius = width / 2
+                val innerRadius = outerRadius * 0.42f
+                
+                for (i in 0 until 10) {
+                    val angle = Math.toRadians((i * 36 - 90).toDouble())
+                    val r = if (i % 2 == 0) outerRadius else innerRadius
+                    val x = centerX + (r * Math.cos(angle)).toFloat()
+                    val y = centerY + (r * Math.sin(angle)).toFloat()
+                    if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                }
+                path.close()
+                
+                drawPath(
+                    path = path, 
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color(0xFFFFF176), Color(0xFFFBC02D)),
+                        center = Offset(centerX, centerY)
+                    )
+                )
+                
+                val eyeY = centerY - 8.dp.toPx()
+                val leftEyeX = centerX - 18.dp.toPx()
+                val rightEyeX = centerX + 18.dp.toPx()
+                val eyeRadius = 5.dp.toPx()
+                
+                drawCircle(color = Color.Black, radius = eyeRadius, center = Offset(leftEyeX, eyeY))
+                drawCircle(color = Color.White, radius = 1.5f.dp.toPx(), center = Offset(leftEyeX - 1.5f.dp.toPx(), eyeY - 1.5f.dp.toPx()))
+                
+                drawIntoCanvas { canvas ->
+                    canvas.save()
+                    canvas.translate(rightEyeX, eyeY)
+                    canvas.scale(1f, eyeWinkScale)
+                    drawCircle(color = Color.Black, radius = eyeRadius, center = Offset(0f, 0f))
+                    drawCircle(color = Color.White, radius = 1.5f.dp.toPx(), center = Offset(-1.5f.dp.toPx(), -1.5f.dp.toPx()))
+                    canvas.restore()
+                }
+                
+                drawCircle(color = Color(0xFFFF8A80).copy(alpha = 0.8f), radius = 6.dp.toPx(), center = Offset(leftEyeX - 6.dp.toPx(), eyeY + 12.dp.toPx()))
+                drawCircle(color = Color(0xFFFF8A80).copy(alpha = 0.8f), radius = 6.dp.toPx(), center = Offset(rightEyeX + 6.dp.toPx(), eyeY + 12.dp.toPx()))
+                
+                val mouthPath = Path()
+                mouthPath.arcTo(
+                    rect = Rect(centerX - 10.dp.toPx(), centerY - 3.dp.toPx(), centerX + 10.dp.toPx(), centerY + 14.dp.toPx()),
+                    startAngleDegrees = 0f,
+                    sweepAngleDegrees = 180f,
+                    forceMoveTo = true
+                )
+                drawPath(path = mouthPath, color = Color.Black, style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
+            }
+        }
+
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val width = size.width
+            val height = size.height
+            val centerX = width / 2
+            val centerY = height / 2
+            
+            val angles = listOf(45, 135, 225, 315, 90, 270)
+            angles.forEach { angle ->
+                val rad = Math.toRadians(angle.toDouble())
+                val startDist = width * 0.35f
+                val endDist = width * 0.55f
+                val currentDist = startDist + (endDist - startDist) * sparkProgress
+                val px = centerX + (currentDist * Math.cos(rad)).toFloat()
+                val py = centerY + (currentDist * Math.sin(rad)).toFloat()
+                
+                val scale = (1f - sparkProgress) * 5.dp.toPx()
+                drawCircle(
+                    color = Color(0xFFFFD54F),
+                    radius = scale,
+                    center = Offset(px, py)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun IncorrectAnswerCharacter() {
+    val transition = rememberInfiniteTransition(label = "incorrect_anim")
+    
+    val shakeX by transition.animateFloat(
+        initialValue = -5f,
+        targetValue = 5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(100, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "shake"
+    )
+    
+    val tearProgress1 by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "tear1"
+    )
+    val tearProgress2 by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "tear2"
+    )
+    
+    val lightningAlpha by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                durationMillis = 3000
+                0f at 0
+                0f at 2000
+                0.8f at 2100
+                0f at 2200
+                0.8f at 2250
+                0f at 2400
+            },
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "lightning"
+    )
+    
+    Box(
+        modifier = Modifier.size(160.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        if (lightningAlpha > 0f) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val width = size.width
+                val height = size.height
+                val centerX = width / 2
+                val centerY = height / 2
+                
+                val path = Path()
+                path.moveTo(centerX + 15.dp.toPx(), centerY - 35.dp.toPx())
+                path.lineTo(centerX - 10.dp.toPx(), centerY)
+                path.lineTo(centerX + 5.dp.toPx(), centerY)
+                path.lineTo(centerX - 15.dp.toPx(), centerY + 35.dp.toPx())
+                path.lineTo(centerX + 10.dp.toPx(), centerY - 5.dp.toPx())
+                path.lineTo(centerX - 2.dp.toPx(), centerY - 5.dp.toPx())
+                path.close()
+                
+                drawPath(path = path, color = Color(0xFFFFB300).copy(alpha = lightningAlpha))
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .size(120.dp)
+                .graphicsLayer {
+                    translationX = shakeX
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val width = size.width
+                val height = size.height
+                val centerX = width / 2
+                val centerY = height / 2
+                
+                val cloudColor = Color(0xFF90A4AE)
+                drawCircle(color = cloudColor, radius = 25.dp.toPx(), center = Offset(centerX - 24.dp.toPx(), centerY + 5.dp.toPx()))
+                drawCircle(color = cloudColor, radius = 32.dp.toPx(), center = Offset(centerX, centerY - 10.dp.toPx()))
+                drawCircle(color = cloudColor, radius = 25.dp.toPx(), center = Offset(centerX + 24.dp.toPx(), centerY + 5.dp.toPx()))
+                drawRoundRect(
+                    color = cloudColor,
+                    topLeft = Offset(centerX - 35.dp.toPx(), centerY),
+                    size = Size(70.dp.toPx(), 22.dp.toPx()),
+                    cornerRadius = CornerRadius(10.dp.toPx(), 10.dp.toPx())
+                )
+                
+                val leftEyePath = Path()
+                leftEyePath.arcTo(
+                    rect = Rect(centerX - 22.dp.toPx(), centerY - 12.dp.toPx(), centerX - 12.dp.toPx(), centerY - 4.dp.toPx()),
+                    startAngleDegrees = 180f,
+                    sweepAngleDegrees = 180f,
+                    forceMoveTo = true
+                )
+                drawPath(path = leftEyePath, color = Color(0xFF263238), style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
+                
+                val rightEyePath = Path()
+                rightEyePath.arcTo(
+                    rect = Rect(centerX + 12.dp.toPx(), centerY - 12.dp.toPx(), centerX + 22.dp.toPx(), centerY - 4.dp.toPx()),
+                    startAngleDegrees = 180f,
+                    sweepAngleDegrees = 180f,
+                    forceMoveTo = true
+                )
+                drawPath(path = rightEyePath, color = Color(0xFF263238), style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
+                
+                val mouthPath = Path()
+                mouthPath.arcTo(
+                    rect = Rect(centerX - 8.dp.toPx(), centerY + 4.dp.toPx(), centerX + 8.dp.toPx(), centerY + 14.dp.toPx()),
+                    startAngleDegrees = 180f,
+                    sweepAngleDegrees = 180f,
+                    forceMoveTo = true
+                )
+                drawPath(path = mouthPath, color = Color(0xFF263238), style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
+            }
+        }
+
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val centerX = size.width / 2
+            val centerY = size.height / 2
+            
+            val d1x = centerX - 15.dp.toPx()
+            val d1y_start = centerY + 15.dp.toPx()
+            val d1y_end = centerY + 55.dp.toPx()
+            val d1y = d1y_start + (d1y_end - d1y_start) * tearProgress1
+            val d1alpha = 1f - tearProgress1
+            
+            drawCircle(
+                color = Color(0xFF29B6F6).copy(alpha = d1alpha),
+                radius = 3.dp.toPx(),
+                center = Offset(d1x + shakeX, d1y)
+            )
+            
+            val d2x = centerX + 15.dp.toPx()
+            val d2y_start = centerY + 10.dp.toPx()
+            val d2y_end = centerY + 50.dp.toPx()
+            val d2y = d2y_start + (d2y_end - d2y_start) * tearProgress2
+            val d2alpha = 1f - tearProgress2
+            
+            drawCircle(
+                color = Color(0xFF29B6F6).copy(alpha = d2alpha),
+                radius = 3.dp.toPx(),
+                center = Offset(d2x + shakeX, d2y)
+            )
+        }
+    }
+}
+
+@Composable
+fun ScratchCard(
+    onScratchComplete: () -> Unit,
+    rewardText: String,
+    modifier: Modifier = Modifier
+) {
+    var scratchedPercentage by remember { mutableStateOf(0f) }
+    
+    Box(
+        modifier = modifier
+            .size(width = 280.dp, height = 160.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(
+                brush = Brush.linearGradient(
+                    colors = listOf(Color(0xFFFFF0C2), Color(0xFFFFD194))
+                )
+            )
+            .border(4.dp, Color(0xFFFFD700), RoundedCornerShape(24.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        // Underneath Content (The Reward)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(text = "🎁", fontSize = 48.sp)
+            Text(
+                text = rewardText,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Black,
+                color = Color(0xFF8B6508)
+            )
+            Text(
+                text = "BONUS STAR REWARD!",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFC79100),
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+        
+        // Scratchable Overlay
+        val drawPoints = remember { mutableStateListOf<Offset>() }
+        
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            event.changes.forEach { change ->
+                                if (change.pressed) {
+                                    change.consume()
+                                    drawPoints.add(change.position)
+                                    if (drawPoints.size > 25 && scratchedPercentage < 0.8f) {
+                                        scratchedPercentage = 0.8f
+                                        onScratchComplete()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+        ) {
+            if (scratchedPercentage < 0.8f) {
+                // We want to clear the drawn points!
+                val paint = Paint().apply {
+                    color = Color.Transparent
+                    blendMode = BlendMode.Clear
+                    style = PaintingStyle.Stroke
+                    strokeWidth = 35.dp.toPx()
+                    strokeCap = StrokeCap.Round
+                    strokeJoin = StrokeJoin.Round
+                }
+                
+                drawIntoCanvas { canvas ->
+                    canvas.saveLayer(Rect(0f, 0f, size.width, size.height), Paint())
+                    // Draw grey overlay inside save layer
+                    canvas.drawRoundRect(
+                        0f, 0f, size.width, size.height,
+                        24.dp.toPx(), 24.dp.toPx(),
+                        Paint().apply { color = Color(0xFFB0BEC5) }
+                    )
+                    
+                    // Draw "Scratch Here" text inside save layer
+                    val textPaint = android.graphics.Paint().apply {
+                        color = android.graphics.Color.WHITE
+                        textSize = 16.sp.toPx()
+                        isFakeBoldText = true
+                        textAlign = android.graphics.Paint.Align.CENTER
+                    }
+                    canvas.nativeCanvas.drawText(
+                        "Scratch Here to Reveal! ✨",
+                        size.width / 2,
+                        size.height / 2 + 6.dp.toPx(),
+                        textPaint
+                    )
+                    
+                    // Clear the path from the save layer
+                    if (drawPoints.isNotEmpty()) {
+                        val p = Path()
+                        p.moveTo(drawPoints.first().x, drawPoints.first().y)
+                        for (i in 1 until drawPoints.size) {
+                            p.lineTo(drawPoints[i].x, drawPoints[i].y)
+                        }
+                        canvas.drawPath(p, paint)
+                    }
+                    canvas.restore()
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun HomeScreen(viewModel: QuizViewModel) {
     val totalStars = viewModel.totalStars
     val streakCount = viewModel.streakCount
@@ -273,6 +754,124 @@ fun HomeScreen(viewModel: QuizViewModel) {
             },
             shape = RoundedCornerShape(28.dp),
             containerColor = SleekBgLight
+        )
+    }
+
+    var showLevelUpDialog by remember { mutableStateOf(false) }
+    var isChestOpened by remember { mutableStateOf(false) }
+    // Capture level number at dialog-open time so text doesn't change mid-dialog
+    var dialogTargetLevel by remember { mutableStateOf(1) }
+
+    if (showLevelUpDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                // Always allow dismissal
+                showLevelUpDialog = false
+                isChestOpened = false
+            },
+            title = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = if (isChestOpened) "🎉 REWARD CLAIMED! 🎉" else "🎉 LEVEL UP! 🎉",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFFE28F00),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = if (isChestOpened)
+                            "You are now Level $dialogTargetLevel! 🚀"
+                        else
+                            "You reached Level $dialogTargetLevel! Open your reward chest!",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = SleekPurple,
+                        textAlign = TextAlign.Center
+                    )
+
+                    val rotateTransition = rememberInfiniteTransition(label = "rotate_gem")
+                    val gemRotation by rotateTransition.animateFloat(
+                        initialValue = 0f,
+                        targetValue = 360f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(4000, easing = LinearEasing),
+                            repeatMode = RepeatMode.Restart
+                        ),
+                        label = "rotate"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .size(120.dp)
+                            .background(Color(0xFFFFF9C4), CircleShape)
+                            .border(3.dp, Color(0xFFFFD54F), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (isChestOpened) "👑" else "🎁",
+                            fontSize = 64.sp,
+                            modifier = Modifier.rotate(if (isChestOpened) gemRotation else 0f)
+                        )
+                    }
+
+                    Text(
+                        text = if (isChestOpened) {
+                            "You claimed 5 BONUS STARS! ⭐ Keep going to reach Level ${dialogTargetLevel + 1}!"
+                        } else {
+                            "Tap the button below to reveal your bonus star reward!"
+                        },
+                        fontSize = 14.sp,
+                        color = Color(0xFF49454F),
+                        textAlign = TextAlign.Center,
+                        lineHeight = 20.sp
+                    )
+                }
+            },
+            confirmButton = {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (!isChestOpened) {
+                        Button(
+                            onClick = {
+                                viewModel.claimLevelUpReward(5)
+                                isChestOpened = true
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth().height(48.dp)
+                        ) {
+                            Text("Open Chest! 🎁", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
+                    } else {
+                        Button(
+                            onClick = {
+                                showLevelUpDialog = false
+                                isChestOpened = false
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = SleekPurple),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth().height(48.dp)
+                        ) {
+                            Text("Awesome! Keep Learning! 🌟", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+                    }
+                }
+            },
+            shape = RoundedCornerShape(32.dp),
+            containerColor = Color(0xFFFFFDE7)
         )
     }
 
@@ -443,50 +1042,204 @@ fun HomeScreen(viewModel: QuizViewModel) {
                 .padding(horizontal = 24.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Daily Progress goals Card styled precisely like Sleek Interface
+            // Level Chest & Progress Bar
+            val currentLevel = (totalStars / 10) + 1
+            val nextLevelStars = currentLevel * 10
+            val prevLevelStars = (currentLevel - 1) * 10
+            val levelProgress = (totalStars - prevLevelStars) / 10f
+            
             Card(
-                colors = CardDefaults.cardColors(containerColor = SleekSurfaceVariant),
-                shape = RoundedCornerShape(28.dp),
-                border = BorderStroke(1.dp, SleekBorderLight),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFDE7)),
+                shape = RoundedCornerShape(32.dp),
+                border = BorderStroke(2.dp, Color(0xFFFFF59D)),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 8.dp)
             ) {
-                Column(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(20.dp)
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    val progressRatio = if (dailyGoal > 0) todayCompleted.toFloat() / dailyGoal else 1f
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    // Cute level circle
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .background(Color(0xFFFFD54F), CircleShape)
+                            .border(3.dp, Color(0xFFF57F17), CircleShape),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "Daily Goal: $todayCompleted/${dailyGoal} Stars",
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 14.sp,
-                            color = Color(0xFF49454F)
-                        )
-                        Text(
-                            text = "Keep it up!",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
-                            color = SleekPurple
+                        Text(text = "Lv $currentLevel", fontWeight = FontWeight.Black, fontSize = 14.sp, color = Color(0xFF5D4037))
+                    }
+                    
+                    // Level progress bar
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Level Progress",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = Color(0xFF5D4037)
+                            )
+                            Text(
+                                text = "$totalStars / $nextLevelStars ⭐",
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 12.sp,
+                                color = Color(0xFFF57F17)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        LinearProgressIndicator(
+                            progress = { levelProgress.coerceIn(0f, 1f) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(16.dp)
+                                .clip(RoundedCornerShape(100.dp)),
+                            color = Color(0xFFFFB300),
+                            trackColor = Color(0xFFFFF9C4)
                         )
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    LinearProgressIndicator(
-                        progress = { progressRatio.coerceIn(0f, 1f) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(16.dp)
-                            .clip(RoundedCornerShape(100.dp)),
-                        color = SleekPurple,
-                        trackColor = SleekBorderLight
+                    
+                    // pendingLevelUp: true only if earned stars (not bonus) justify a new level that hasn't been claimed
+                    val pendingLevelUp = currentLevel > viewModel.lastClaimedLevel
+                    val chestTransition = rememberInfiniteTransition(label = "chest_throb")
+                    val chestScale by chestTransition.animateFloat(
+                        initialValue = 1f,
+                        targetValue = if (pendingLevelUp) 1.3f else 1.1f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(if (pendingLevelUp) 350 else 600, easing = FastOutSlowInEasing),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "scale"
                     )
+                    
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .bouncyClick {
+                                if (pendingLevelUp) {
+                                    dialogTargetLevel = currentLevel // lock current level at open time
+                                    showLevelUpDialog = true
+                                } else {
+                                    showTrophyDialog = true
+                                }
+                            }
+                            .padding(4.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .scale(chestScale),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(text = if (pendingLevelUp) "🎁" else "📦", fontSize = 32.sp)
+                        }
+                        if (pendingLevelUp) {
+                            val pulseAlpha by chestTransition.animateFloat(
+                                initialValue = 0.5f,
+                                targetValue = 1f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(350, easing = LinearEasing),
+                                    repeatMode = RepeatMode.Reverse
+                                ),
+                                label = "pulse"
+                            )
+                            Text(
+                                text = "TAP ME! ✨",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color(0xFFE28F00),
+                                modifier = Modifier.graphicsLayer { alpha = pulseAlpha }
+                            )
+                        } else {
+                            Text(
+                                text = "LOCKED",
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Achievements Badges section
+            val attempts by viewModel.allAttempts.collectAsState(initial = emptyList())
+            val mathAttempts = attempts.count { it.subject == "Math" }
+            val englishAttempts = attempts.count { it.subject == "English" }
+            val scienceAttempts = attempts.count { it.subject == "Science" }
+            val generalAttempts = attempts.count { it.subject == "General Knowledge" || it.subject == "General" }
+            
+            val kidBadges = listOf(
+                Triple("Math Wiz 🔢", "Complete 2 Math quizzes", mathAttempts >= 2),
+                Triple("Word Star 📖", "Complete 2 English quizzes", englishAttempts >= 2),
+                Triple("Explorer 🧪", "Complete 2 Science quizzes", scienceAttempts >= 2),
+                Triple("Genius 🧠", "Collect 20+ Stars", totalStars >= 20),
+                Triple("Streak Master 🔥", "Daily streak of 3+", streakCount >= 3)
+            )
+            
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "My Learning Badges 🏅",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Black,
+                    color = SleekPurple
+                )
+                
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                ) {
+                    items(kidBadges) { badge ->
+                        val unlocked = badge.third
+                        val cardBg = if (unlocked) Color(0xFFE8F5E9) else Color(0xFFECEFF1)
+                        val borderCol = if (unlocked) Color(0xFF81C784) else Color(0xFFCFD8DC)
+                        val badgeScale = if (unlocked) 1f else 0.9f
+                        
+                        Card(
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(containerColor = cardBg),
+                            border = BorderStroke(2.dp, borderCol),
+                            modifier = Modifier
+                                .size(width = 120.dp, height = 110.dp)
+                                .scale(badgeScale)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    text = if (unlocked) "⭐" else "🔒",
+                                    fontSize = 16.sp,
+                                    modifier = Modifier.padding(bottom = 2.dp)
+                                )
+                                Text(
+                                    text = badge.first,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (unlocked) Color(0xFF2E7D32) else Color(0xFF546E7A),
+                                    textAlign = TextAlign.Center
+                                )
+                                Text(
+                                    text = badge.second,
+                                    fontSize = 8.sp,
+                                    color = Color.Gray,
+                                    textAlign = TextAlign.Center,
+                                    lineHeight = 10.sp,
+                                    modifier = Modifier.padding(top = 2.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -641,7 +1394,7 @@ fun SleekSubjectCard(
                 .padding(bottom = 5.dp) // Creates the precise tactile border-b-4 3D button effect from CSS!
                 .background(containerColor, RoundedCornerShape(28.dp))
                 .clip(RoundedCornerShape(28.dp))
-                .clickable(onClick = onClick)
+                .bouncyClick(onClick = onClick)
                 .padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -670,6 +1423,17 @@ fun QuizSessionScreen(viewModel: QuizViewModel, subject: String) {
     val selectedOptionIdx = viewModel.selectedOptionIdx
     val isAnswerChecked = viewModel.isAnswerChecked
     val activeScore = viewModel.activeScore
+    
+    var showPopup by remember { mutableStateOf(false) }
+    var isCorrectPopup by remember { mutableStateOf(false) }
+
+    LaunchedEffect(showPopup) {
+        if (showPopup) {
+            kotlinx.coroutines.delay(1500L)
+            showPopup = false
+            viewModel.submitAnswerAndNext(subject)
+        }
+    }
     
     val initialTimeMinutes = viewModel.subjectTimers[subject] ?: 0
     var timeLeftSeconds by remember(subject) { mutableStateOf(initialTimeMinutes * 60) }
@@ -726,11 +1490,24 @@ fun QuizSessionScreen(viewModel: QuizViewModel, subject: String) {
                     if (initialTimeMinutes > 0) {
                         val mins = timeLeftSeconds / 60
                         val secs = timeLeftSeconds % 60
+                        
+                        val infiniteTransition = rememberInfiniteTransition(label="timer_throb")
+                        val scale by infiniteTransition.animateFloat(
+                            initialValue = 1f,
+                            targetValue = if (timeLeftSeconds <= 10 && timeLeftSeconds > 0) 1.2f else 1f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(500),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "timer_throb_scale"
+                        )
+
                         Text(
                             text = "⏱️ ${String.format("%02d:%02d", mins, secs)}",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (timeLeftSeconds <= 10) Color(0xFFBA1A1A) else SleekPurple
+                            color = if (timeLeftSeconds <= 10) Color(0xFFBA1A1A) else SleekPurple,
+                            modifier = Modifier.scale(scale)
                         )
                     }
                 }
@@ -923,9 +1700,13 @@ fun QuizSessionScreen(viewModel: QuizViewModel, subject: String) {
                     val isLast = currentQuestionIdx == activeQuestions.size - 1
                     Button(
                         onClick = {
-                            viewModel.submitAnswerAndNext(subject)
+                            val currentQ = activeQuestions.getOrNull(currentQuestionIdx)
+                            if (currentQ != null) {
+                                isCorrectPopup = selectedOptionIdx == currentQ.correctOptionIndex
+                                showPopup = true
+                            }
                         },
-                        enabled = selectedOptionIdx != -1,
+                        enabled = selectedOptionIdx != -1 && !showPopup,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = SleekPurple,
                             disabledContainerColor = Color(0xFFE7E0EC)
@@ -938,6 +1719,62 @@ fun QuizSessionScreen(viewModel: QuizViewModel, subject: String) {
                     ) {
                         val buttonText = if (isLast) "See Results! 🏆" else "Next 👉"
                         Text(text = buttonText, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = if (selectedOptionIdx != -1) Color.White else Color(0xFFCAC4D0))
+                    }
+                }
+            }
+            
+            // Pop-up overlay
+            AnimatedVisibility(
+                visible = showPopup,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.4f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    var animateIn by remember { mutableStateOf(false) }
+                    LaunchedEffect(Unit) {
+                        animateIn = true
+                    }
+                    
+                    val scale by animateFloatAsState(
+                        targetValue = if (animateIn) 1f else 0f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessLow
+                        ),
+                        label = "popup_scale"
+                    )
+
+                    Card(
+                        shape = RoundedCornerShape(32.dp),
+                        colors = CardDefaults.cardColors(containerColor = if (isCorrectPopup) Color(0xFFF1F8F1) else Color(0xFFFCF2F2)),
+                        modifier = Modifier
+                            .size(220.dp)
+                            .scale(scale)
+                            .border(3.dp, if (isCorrectPopup) Color(0xFF81C784) else Color(0xFFE57373), RoundedCornerShape(32.dp))
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            if (isCorrectPopup) {
+                                CorrectAnswerCharacter()
+                            } else {
+                                IncorrectAnswerCharacter()
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = if (isCorrectPopup) "Correct! 🎉" else "Oops! 🥺",
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Black,
+                                color = if (isCorrectPopup) Color(0xFF28A745) else Color(0xFFDC3545)
+                            )
+                        }
                     }
                 }
             }
@@ -962,31 +1799,22 @@ fun QuizResultScreen(
         label = "rotation"
     )
 
+    var scratchClaimed by remember { mutableStateOf(false) }
+    var scratchRevealed by remember { mutableStateOf(false) }
+
     Scaffold(containerColor = Color.Transparent) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Confetti canvas sparkles
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val rSeed = multiplier.toInt()
-                for (i in 0..40) {
-                    val angle = (i * 12 + rSeed) % 360
-                    val rad = Math.toRadians(angle.toDouble())
-                    val distance = (120 + (i * 7) % 300).dp.toPx()
-                    val x = size.width / 2 + (distance * Math.cos(rad)).toFloat()
-                    val y = size.height * 0.35f + (distance * Math.sin(rad)).toFloat()
-                    val color = when (i % 5) {
-                        0 -> Color(0xFFD0E4FF)
-                        1 -> Color(0xFFFFDBCB)
-                        2 -> Color(0xFFC2F0C2)
-                        3 -> Color(0xFFF2D8FF)
-                        else -> SleekPurple
-                    }
-                    drawCircle(color = color, radius = (4 + i % 6).dp.toPx(), center = Offset(x, y))
-                }
-            }
+            val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(com.example.R.raw.confetti))
+            LottieAnimation(
+                composition = composition,
+                iterations = LottieConstants.IterateForever,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+            )
 
             Column(
                 modifier = Modifier
@@ -1030,160 +1858,226 @@ fun QuizResultScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Score stats circle holder
-                Card(
-                     shape = RoundedCornerShape(32.dp),
-                     colors = CardDefaults.cardColors(containerColor = SleekSurfaceVariant),
-                     border = BorderStroke(1.dp, SleekBorderLight),
-                     modifier = Modifier
-                         .fillMaxWidth()
-                         .padding(horizontal = 4.dp)
-                ) {
-                    Column(
+                if (!scratchClaimed) {
+                    // Show Scratch Card Game
+                    Card(
+                        shape = RoundedCornerShape(32.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF7FF)),
+                        border = BorderStroke(3.dp, Color(0xFFFFD54F)),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                            .padding(horizontal = 4.dp)
                     ) {
-                        Text(
-                            text = "QUIZ REPORT",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = SleekPurple,
-                            letterSpacing = 1.sp
-                        )
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            // Circular Score meter
-                            Box(
-                                modifier = Modifier
-                                    .size(100.dp)
-                                    .background(Color(0xFFEADDFF), CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(text = "$score / $total", fontSize = 24.sp, fontWeight = FontWeight.Black, color = Color(0xFF21005D))
-                                    Text(text = "Correct", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF49454F))
+                            Text(
+                                text = "🎁 BONUS REWARD! 🎁",
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Black,
+                                color = SleekPurple
+                            )
+                            
+                            Text(
+                                text = "Scratch the card below to reveal your bonus learning reward!",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF49454F),
+                                textAlign = TextAlign.Center
+                            )
+                            
+                            ScratchCard(
+                                onScratchComplete = {
+                                    scratchRevealed = true
+                                },
+                                rewardText = "+5 BONUS STARS! ⭐",
+                                modifier = Modifier.padding(vertical = 12.dp)
+                            )
+                            
+                            if (scratchRevealed) {
+                                val claimScale by animateFloatAsState(
+                                    targetValue = 1f,
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessLow
+                                    ),
+                                    label = "claim_scale"
+                                )
+                                Button(
+                                    onClick = {
+                                        viewModel.claimScratchStars(5)
+                                        scratchClaimed = true
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                                    shape = RoundedCornerShape(20.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(56.dp)
+                                        .scale(claimScale)
+                                ) {
+                                    Text("Claim 5 Bonus Stars! 👑", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                 }
                             }
-
-                            // Star points added indicators
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(
-                                    text = "Quiz Rating",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = SleekPurple
-                                )
-                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    val rating = if (total > 0) (score.toFloat() / total * 5).toInt() else 0
-                                    for (i in 1..5) {
-                                        Text(
-                                            text = if (i <= rating) "⭐" else "☆",
-                                            fontSize = 24.sp,
-                                            color = if (i <= rating) Color(0xFFFFD700) else Color.LightGray
-                                        )
-                                    }
-                                }
-                                Text(
-                                    text = "Earned $starsEarned New Stars!",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = Color(0xFF49454F)
-                                )
-                            }
                         }
-
-                        // Playful performance review messages
-                        val percentage = if (total > 0) (score.toFloat() / total * 100) else 0f
-                        val motivationMessage = when {
-                            percentage >= 100f -> "🌟 UNBELIEVABLE! A PERFECT SCORE! You are a genius scientist! 🚀"
-                            percentage >= 80f -> "🌸 EXCELLENT WORK! You know almost everything! High five! 🙌"
-                            percentage >= 60f -> "👍 GOOD JOB! You're doing great, keep it up! ✨"
-                            percentage >= 40f -> "💪 NICE TRY! You're learning fast! Let's practice more! 📚"
-                            else -> "🏃 DON'T GIVE UP! Every mistake is a step towards learning! Try again! ❤️"
-                        }
-
-                        Text(
-                            text = motivationMessage,
-                            textAlign = TextAlign.Center,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = SleekTextDark,
-                            lineHeight = 20.sp,
+                    }
+                } else {
+                    // Show standard report statistics when claimed
+                    Card(
+                         shape = RoundedCornerShape(32.dp),
+                         colors = CardDefaults.cardColors(containerColor = SleekSurfaceVariant),
+                         border = BorderStroke(1.dp, SleekBorderLight),
+                         modifier = Modifier
+                             .fillMaxWidth()
+                             .padding(horizontal = 4.dp)
+                    ) {
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(Color(0xFFEADDFF).copy(alpha = 0.2f), RoundedCornerShape(16.dp))
-                                .border(1.dp, SleekBorderLight, RoundedCornerShape(16.dp))
-                                .padding(16.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                // Detailed Report
-                if (viewModel.activeQuestions.isNotEmpty() && viewModel.userAnswers.isNotEmpty()) {
-                    Text(
-                        text = "Detailed Answers Report 📝",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Black,
-                        color = SleekPurple,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Start
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    viewModel.activeQuestions.forEachIndexed { idx, q ->
-                        val uAns = viewModel.userAnswers.getOrNull(idx) ?: -1
-                        val isCorrect = uAns == q.correctOptionIndex
-                        Card(
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = if (isCorrect) Color(0xFFF1F8F1) else Color(0xFFFCF2F2)),
-                            border = BorderStroke(1.dp, if (isCorrect) Color(0xFFD4EDDA) else Color(0xFFF8D7DA))
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Q${idx + 1}: ${q.questionText}", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = SleekTextDark)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                val ops = listOf(q.optionA, q.optionB, q.optionC, q.optionD)
-                                val uStr = if (uAns in ops.indices) ops[uAns] else "Out of Time / Skipped"
-                                Text(
-                                    "Your Answer: $uStr", 
-                                    color = if (isCorrect) Color(0xFF28A745) else Color(0xFFDC3545), 
-                                    fontSize = 13.sp, 
-                                    fontWeight = FontWeight.Bold
-                                )
-                                if (!isCorrect) {
-                                    val cStr = ops.getOrNull(q.correctOptionIndex) ?: ""
+                            Text(
+                                text = "QUIZ REPORT",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = SleekPurple,
+                                letterSpacing = 1.sp
+                            )
+
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(100.dp)
+                                        .background(Color(0xFFEADDFF), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        val animatedScore by animateIntAsState(
+                                            targetValue = score,
+                                            animationSpec = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
+                                            label = "score"
+                                        )
+                                        Text(text = "$animatedScore / $total", fontSize = 24.sp, fontWeight = FontWeight.Black, color = Color(0xFF21005D))
+                                        Text(text = "Correct", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF49454F))
+                                    }
+                                }
+
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Text(
-                                        "Correct Answer: $cStr", 
-                                        color = Color(0xFF28A745), 
-                                        fontSize = 13.sp, 
-                                        fontWeight = FontWeight.Bold
+                                        text = "Quiz Rating",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = SleekPurple
+                                    )
+                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        val rating = if (total > 0) (score.toFloat() / total * 5).toInt() else 0
+                                        for (i in 1..5) {
+                                            Text(
+                                                text = if (i <= rating) "⭐" else "☆",
+                                                fontSize = 24.sp,
+                                                color = if (i <= rating) Color(0xFFFFD700) else Color.LightGray
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        text = "Earned $starsEarned New Stars!",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color(0xFF49454F)
                                     )
                                 }
                             }
+
+                            val percentage = if (total > 0) (score.toFloat() / total * 100) else 0f
+                            val motivationMessage = when {
+                                percentage >= 100f -> "🌟 UNBELIEVABLE! A PERFECT SCORE! You are a genius scientist! 🚀"
+                                percentage >= 80f -> "🌸 EXCELLENT WORK! You know almost everything! High five! 🙌"
+                                percentage >= 60f -> "👍 GOOD JOB! You're doing great, keep it up! ✨"
+                                percentage >= 40f -> "💪 NICE TRY! You're learning fast! Let's practice more! 📚"
+                                else -> "🏃 DON'T GIVE UP! Every mistake is a step towards learning! Try again! ❤️"
+                            }
+
+                            Text(
+                                text = motivationMessage,
+                                textAlign = TextAlign.Center,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = SleekTextDark,
+                                lineHeight = 20.sp,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color(0xFFEADDFF).copy(alpha = 0.2f), RoundedCornerShape(16.dp))
+                                    .border(1.dp, SleekBorderLight, RoundedCornerShape(16.dp))
+                                    .padding(16.dp)
+                            )
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
+                    
+                    if (viewModel.activeQuestions.isNotEmpty() && viewModel.userAnswers.isNotEmpty()) {
+                        Text(
+                            text = "Detailed Answers Report 📝",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Black,
+                            color = SleekPurple,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Start
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        viewModel.activeQuestions.forEachIndexed { idx, q ->
+                            val uAns = viewModel.userAnswers.getOrNull(idx) ?: -1
+                            val isCorrect = uAns == q.correctOptionIndex
+                            Card(
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = if (isCorrect) Color(0xFFF1F8F1) else Color(0xFFFCF2F2)),
+                                border = BorderStroke(1.dp, if (isCorrect) Color(0xFFD4EDDA) else Color(0xFFF8D7DA))
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text("Q${idx + 1}: ${q.questionText}", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = SleekTextDark)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    val ops = listOf(q.optionA, q.optionB, q.optionC, q.optionD)
+                                    val uStr = if (uAns in ops.indices) ops[uAns] else "Out of Time / Skipped"
+                                    Text(
+                                        "Your Answer: $uStr", 
+                                        color = if (isCorrect) Color(0xFF28A745) else Color(0xFFDC3545), 
+                                        fontSize = 13.sp, 
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    if (!isCorrect) {
+                                        val cStr = ops.getOrNull(q.correctOptionIndex) ?: ""
+                                        Text(
+                                            "Correct Answer: $cStr", 
+                                            color = Color(0xFF28A745), 
+                                            fontSize = 13.sp, 
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
 
-                // Done Button to bring back Home
-                Button(
-                    onClick = { viewModel.navigateTo(Screen.Home) },
-                    colors = ButtonDefaults.buttonColors(containerColor = SleekPurple),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .testTag("result_done_button")
-                ) {
-                    Text(text = "Awesome! Back to Home 🏠", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = { viewModel.navigateTo(Screen.Home) },
+                        colors = ButtonDefaults.buttonColors(containerColor = SleekPurple),
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .testTag("result_done_button")
+                    ) {
+                        Text(text = "Awesome! Back to Home 🏠", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(48.dp))
@@ -3827,3 +4721,193 @@ fun ParentSettingsTab(viewModel: QuizViewModel) {
         Spacer(modifier = Modifier.height(32.dp))
     }
 }
+
+@Composable
+fun KidsAnimatedBackground() {
+    val infiniteTransition = rememberInfiniteTransition(label = "background_anims")
+    
+    val colorShift by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(15000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "gradient_color_shift"
+    )
+    
+    val color1 = androidx.compose.ui.graphics.lerp(Color(0xFFFFF9C4), Color(0xFFFFE0B2), colorShift)
+    val color2 = androidx.compose.ui.graphics.lerp(Color(0xFFF3E5F5), Color(0xFFE1BEE7), colorShift)
+    val color3 = androidx.compose.ui.graphics.lerp(Color(0xFFE0F7FA), Color(0xFFB2EBF2), colorShift)
+    
+    val cloudOffset by infiniteTransition.animateFloat(
+        initialValue = -100f,
+        targetValue = 600f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(25000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "cloud_offset"
+    )
+
+    val starScale1 by infiniteTransition.animateFloat(
+        initialValue = 0.6f,
+        targetValue = 1.2f,
+        animationSpec = infiniteRepeatable(animation = tween(1800, easing = LinearEasing), repeatMode = RepeatMode.Reverse),
+        label = "star_scale_1"
+    )
+    val starScale2 by infiniteTransition.animateFloat(
+        initialValue = 1.2f,
+        targetValue = 0.6f,
+        animationSpec = infiniteRepeatable(animation = tween(2200, easing = LinearEasing), repeatMode = RepeatMode.Reverse),
+        label = "star_scale_2"
+    )
+    val starRotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(animation = tween(10000, easing = LinearEasing), repeatMode = RepeatMode.Restart),
+        label = "star_rotation"
+    )
+
+    val bubbleProgress1 by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(animation = tween(8000, easing = LinearEasing), repeatMode = RepeatMode.Restart),
+        label = "bubble_progress_1"
+    )
+    val bubbleProgress2 by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(animation = tween(11000, easing = LinearEasing), repeatMode = RepeatMode.Restart),
+        label = "bubble_progress_2"
+    )
+    val bubbleProgress3 by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(animation = tween(6500, easing = LinearEasing), repeatMode = RepeatMode.Restart),
+        label = "bubble_progress_3"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(color1, color2, color3)
+                )
+            )
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val width = size.width
+            val height = size.height
+            
+            drawBubble(
+                centerX = width * 0.15f + (Math.sin(bubbleProgress1.toDouble() * 10.0) * 30.dp.toPx()).toFloat(),
+                centerY = height * bubbleProgress1,
+                radius = 16.dp.toPx(),
+                color = Color(0xFF80DEEA).copy(alpha = 0.25f)
+            )
+            drawBubble(
+                centerX = width * 0.85f + (Math.cos(bubbleProgress2.toDouble() * 8.0) * 40.dp.toPx()).toFloat(),
+                centerY = height * bubbleProgress2,
+                radius = 24.dp.toPx(),
+                color = Color(0xFFFFB7B2).copy(alpha = 0.2f)
+            )
+            drawBubble(
+                centerX = width * 0.5f + (Math.sin(bubbleProgress3.toDouble() * 12.0) * 20.dp.toPx()).toFloat(),
+                centerY = height * bubbleProgress3,
+                radius = 12.dp.toPx(),
+                color = Color(0xFFC1F4C5).copy(alpha = 0.22f)
+            )
+
+            drawStarAt(
+                x = width * 0.25f,
+                y = height * 0.15f,
+                scale = starScale1,
+                rotationDegrees = starRotation,
+                color = Color(0xFFFFF59D).copy(alpha = 0.6f)
+            )
+            drawStarAt(
+                x = width * 0.78f,
+                y = height * 0.35f,
+                scale = starScale2,
+                rotationDegrees = -starRotation,
+                color = Color(0xFFFFE082).copy(alpha = 0.7f)
+            )
+            drawStarAt(
+                x = width * 0.1f,
+                y = height * 0.75f,
+                scale = starScale2 * 0.9f,
+                rotationDegrees = starRotation * 1.5f,
+                color = Color(0xFFFFD54F).copy(alpha = 0.5f)
+            )
+
+            drawCloudAt(x = (cloudOffset.dp.toPx()) % (width + 200.dp.toPx()) - 100.dp.toPx(), y = height * 0.08f, alpha = 0.35f)
+            drawCloudAt(x = ((cloudOffset * 0.7f).dp.toPx()) % (width + 300.dp.toPx()) - 150.dp.toPx() + width * 0.5f, y = height * 0.25f, alpha = 0.25f)
+        }
+    }
+}
+
+fun androidx.compose.ui.graphics.drawscope.DrawScope.drawBubble(centerX: Float, centerY: Float, radius: Float, color: Color) {
+    drawCircle(
+        color = color,
+        radius = radius,
+        center = Offset(centerX, centerY)
+    )
+    drawCircle(
+        color = color.copy(alpha = color.alpha * 1.5f),
+        radius = radius,
+        center = Offset(centerX, centerY),
+        style = Stroke(width = 1.5f.dp.toPx())
+    )
+    drawCircle(
+        color = Color.White.copy(alpha = 0.4f),
+        radius = radius * 0.25f,
+        center = Offset(centerX - radius * 0.35f, centerY - radius * 0.35f)
+    )
+}
+
+fun androidx.compose.ui.graphics.drawscope.DrawScope.drawStarAt(x: Float, y: Float, scale: Float, rotationDegrees: Float, color: Color) {
+    drawIntoCanvas { canvas ->
+        canvas.save()
+        canvas.translate(x, y)
+        canvas.scale(scale, scale)
+        canvas.rotate(rotationDegrees)
+        
+        val size = 30.dp.toPx()
+        val path = Path()
+        val centerX = 0f
+        val centerY = 0f
+        val outerRadius = size / 2
+        val innerRadius = outerRadius * 0.4f
+        
+        for (i in 0 until 10) {
+            val angle = Math.toRadians((i * 36 - 90).toDouble())
+            val r = if (i % 2 == 0) outerRadius else innerRadius
+            val px = centerX + (r * Math.cos(angle)).toFloat()
+            val py = centerY + (r * Math.sin(angle)).toFloat()
+            if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
+        }
+        path.close()
+        drawPath(path = path, color = color)
+        
+        canvas.restore()
+    }
+}
+
+fun androidx.compose.ui.graphics.drawscope.DrawScope.drawCloudAt(x: Float, y: Float, alpha: Float) {
+    val cloudColor = Color.White.copy(alpha = alpha)
+    val r = 20.dp.toPx()
+    drawCircle(color = cloudColor, radius = r, center = Offset(x, y))
+    drawCircle(color = cloudColor, radius = r * 1.4f, center = Offset(x + r * 1.1f, y - r * 0.3f))
+    drawCircle(color = cloudColor, radius = r * 1.1f, center = Offset(x + r * 2.2f, y))
+    drawCircle(color = cloudColor, radius = r * 0.8f, center = Offset(x - r * 0.8f, y + r * 0.2f))
+    
+    drawRoundRect(
+        color = cloudColor,
+        topLeft = Offset(x - r * 1.2f, y - r * 0.1f),
+        size = Size(r * 3.8f, r * 1.2f),
+        cornerRadius = CornerRadius(r, r)
+    )
+}
+

@@ -30,3 +30,17 @@ captures/
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Agent configurations
+.agent/
+.agents/
+.understand-anything/
+
+# Keystores
+*.jks
+*.keystore
+
+# Temporary script outputs
+build_*.txt
+deploy*.txt
+install_*.txt

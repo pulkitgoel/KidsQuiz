@@ -26,6 +26,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_CUSTOM_SUBJECTS = "custom_subjects"
         private const val KEY_DEFAULT_QUESTIONS_CLEARED = "default_questions_cleared"
         private const val KEY_SUBJECT_TIMERS = "subject_timers"
+        private const val KEY_LAST_CLAIMED_LEVEL = "last_claimed_level"
     }
 
     var defaultQuestionsCleared: Boolean
@@ -133,4 +134,8 @@ class PreferencesManager(context: Context) {
     fun addStars(count: Int) {
         totalStars = totalStars + count
     }
+
+    var lastClaimedLevel: Int
+        get() = prefs.getInt(KEY_LAST_CLAIMED_LEVEL, 1)
+        set(value) = prefs.edit().putInt(KEY_LAST_CLAIMED_LEVEL, value).apply()
 }
