@@ -11,15 +11,46 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
+import java.security.KeyStore
 import java.util.concurrent.TimeUnit
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManagerFactory
+import javax.net.ssl.X509TrustManager
 
 class AiQuestionService {
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(45, TimeUnit.SECONDS)
-        .readTimeout(45, TimeUnit.SECONDS)
-        .writeTimeout(45, TimeUnit.SECONDS)
-        .build()
+    private val client: OkHttpClient by lazy {
+        // Explicitly use the system trust store via TrustManagerFactory.
+        // This resolves CertPathValidatorException on devices with non-standard
+        // SSL stacks (custom ROMs, older OEMs) by forcing Android's default
+        // certificate chain validation path on all API levels.
+        try {
+            val trustManagerFactory = TrustManagerFactory.getInstance(
+                TrustManagerFactory.getDefaultAlgorithm()
+            )
+            trustManagerFactory.init(null as KeyStore?) // null = use system trust store
+            val trustManager = trustManagerFactory.trustManagers
+                .filterIsInstance<X509TrustManager>()
+                .first()
+            val sslContext = SSLContext.getInstance("TLS")
+            sslContext.init(null, arrayOf(trustManager), null)
+
+            OkHttpClient.Builder()
+                .sslSocketFactory(sslContext.socketFactory, trustManager)
+                .connectTimeout(45, TimeUnit.SECONDS)
+                .readTimeout(45, TimeUnit.SECONDS)
+                .writeTimeout(45, TimeUnit.SECONDS)
+                .build()
+        } catch (e: Exception) {
+            // Fallback to default client if SSL setup fails
+            Log.w("AiQuestionService", "Custom SSL setup failed, using default client", e)
+            OkHttpClient.Builder()
+                .connectTimeout(45, TimeUnit.SECONDS)
+                .readTimeout(45, TimeUnit.SECONDS)
+                .writeTimeout(45, TimeUnit.SECONDS)
+                .build()
+        }
+    }
 
     suspend fun generateQuestions(
         provider: String, // "openai" or "deepseek"
