@@ -116,10 +116,73 @@ val GradientStars = Brush.linearGradient(listOf(Color(0xFFFFDF00), Color(0xFFFFA
 @Composable
 fun QuizAppUI(viewModel: QuizViewModel) {
     val currentScreen = viewModel.currentScreen
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var showAppExitDialog by remember { mutableStateOf(false) }
 
-    androidx.activity.compose.BackHandler(enabled = currentScreen !is Screen.Home) {
-        if (currentScreen is Screen.ParentDashboard || currentScreen is Screen.ParentEnterPin || currentScreen is Screen.QuizResult || currentScreen is Screen.QuizSession || currentScreen is Screen.NoQuestions) {
-            viewModel.navigateTo(Screen.Home)
+    // Back press: on Home → ask exit confirmation; elsewhere → navigate home
+    androidx.activity.compose.BackHandler {
+        when (currentScreen) {
+            is Screen.Home -> showAppExitDialog = true
+            is Screen.ParentDashboard, is Screen.ParentEnterPin, is Screen.QuizResult,
+            is Screen.QuizSession, is Screen.NoQuestions -> viewModel.navigateTo(Screen.Home)
+            else -> {}
+        }
+    }
+
+    // Exit App Confirmation Dialog
+    if (showAppExitDialog) {
+        Dialog(onDismissRequest = { showAppExitDialog = false }) {
+            Card(
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(28.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text("👋", fontSize = 52.sp)
+                    Text(
+                        text = "Leaving so soon?",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Black,
+                        color = SleekPurple,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = "Your stars and progress are saved! Come back soon for more fun learning! 🌟",
+                        fontSize = 13.sp,
+                        color = Color(0xFF6C757D),
+                        textAlign = TextAlign.Center,
+                        lineHeight = 20.sp
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { showAppExitDialog = false },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(2.dp, SleekPurple)
+                        ) {
+                            Text("Keep Playing! 🎮", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = SleekPurple)
+                        }
+                        Button(
+                            onClick = {
+                                showAppExitDialog = false
+                                (context as? androidx.activity.ComponentActivity)?.finish()
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = SleekPurple)
+                        ) {
+                            Text("Bye Bye! 👋", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -2313,8 +2376,72 @@ fun ParentDashboardScreen(viewModel: QuizViewModel) {
     val allAttempts by viewModel.allAttempts.collectAsState()
 
     var activeTab by remember { mutableStateOf(0) } // 0: Scores, 1: Questions, 2: Subjects, 3: Archive, 4: Settings
-    androidx.activity.compose.BackHandler(enabled = activeTab != 0) {
-        activeTab = 0
+    var showParentExitDialog by remember { mutableStateOf(false) }
+
+    // Back on tab 0 → show exit confirmation; other tabs → go back to tab 0
+    androidx.activity.compose.BackHandler {
+        if (activeTab != 0) {
+            activeTab = 0
+        } else {
+            showParentExitDialog = true
+        }
+    }
+
+    // Parent Exit Confirmation Dialog
+    if (showParentExitDialog) {
+        Dialog(onDismissRequest = { showParentExitDialog = false }) {
+            Card(
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(28.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text("🔒", fontSize = 52.sp)
+                    Text(
+                        text = "Exit Parent Section?",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Black,
+                        color = SleekPurple,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = "You'll be taken back to the Kids section. All your changes have been saved! ✅",
+                        fontSize = 13.sp,
+                        color = Color(0xFF6C757D),
+                        textAlign = TextAlign.Center,
+                        lineHeight = 20.sp
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { showParentExitDialog = false },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(2.dp, SleekPurple)
+                        ) {
+                            Text("Stay Here", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = SleekPurple)
+                        }
+                        Button(
+                            onClick = {
+                                showParentExitDialog = false
+                                viewModel.navigateTo(Screen.Home)
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = SleekPurple)
+                        ) {
+                            Text("Exit ✅", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     Scaffold(
@@ -2341,7 +2468,7 @@ fun ParentDashboardScreen(viewModel: QuizViewModel) {
                     color = SleekPurple
                 )
                 IconButton(
-                    onClick = { viewModel.navigateTo(Screen.Home) },
+                    onClick = { showParentExitDialog = true },
                     modifier = Modifier
                         .background(SleekSurfaceVariant, CircleShape)
                         .size(36.dp)
@@ -2421,163 +2548,400 @@ fun ParentDashboardScreen(viewModel: QuizViewModel) {
 
 @Composable
 fun ParentScoresHistoryTab(allAttempts: List<QuizAttempt>) {
-    if (allAttempts.isEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(text = "📭", fontSize = 48.sp)
-                Text(
-                    text = "No scores recorded yet!",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = SleekPurple
-                )
-                Text(
-                    text = "When the kid plays a quiz, their results, stars, and completion history will populate here.",
-                    fontSize = 13.sp,
-                    color = Color(0xFF49454F),
-                    lineHeight = 18.sp,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-    } else {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item {
-                Text(
-                    text = "Active Progress Tracker",
-                    fontWeight = FontWeight.Black,
-                    fontSize = 16.sp,
-                    color = SleekPurple,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-            }
+    // -1: Landing Hub, 0: Full History, 1: Subject Detail (filtered by subject)
+    var activeMode by remember { mutableStateOf(-1) }
+    var selectedSubject by remember { mutableStateOf("") }
 
-            items(allAttempts) { attempt ->
-                val dateFmt = SimpleDateFormat("MMM dd, yyyy - hh:mm a", Locale.getDefault())
-                val formattedDate = dateFmt.format(Date(attempt.timestamp))
-                var expanded by remember { mutableStateOf(false) }
+    androidx.activity.compose.BackHandler(enabled = activeMode != -1) {
+        activeMode = -1
+        selectedSubject = ""
+    }
 
-                Card(
-                    modifier = Modifier.fillMaxWidth().clickable {
-                        if (attempt.answersJson.isNotBlank()) expanded = !expanded
-                    },
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = SleekSurfaceVariant),
-                    border = BorderStroke(1.dp, SleekBorderLight)
-                ) {
-                    Column {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+    // Computed stats
+    val totalSessions = allAttempts.size
+    val totalStars = allAttempts.sumOf { it.starsEarned }
+    val perfectSessions = allAttempts.count { it.score == it.totalQuestions }
+    val avgAccuracy = if (totalSessions > 0)
+        (allAttempts.sumOf { it.score }.toFloat() / allAttempts.sumOf { it.totalQuestions }.toFloat() * 100).toInt()
+    else 0
+    val subjectGroups = allAttempts.groupBy { it.subject }
+
+    AnimatedContent(
+        targetState = activeMode,
+        transitionSpec = { fadeIn(animationSpec = tween(200)) togetherWith fadeOut(animationSpec = tween(200)) },
+        label = "scores_mode"
+    ) { mode ->
+        when (mode) {
+            -1 -> {
+                // LANDING HUB
+                if (allAttempts.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize().padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    val labelEmoji = when (attempt.subject) {
-                                        "Math" -> "🧮 "
-                                        "English" -> "📝 "
-                                        "General Knowledge" -> "🌍 "
-                                        "Science" -> "🧪 "
-                                        else -> "🌟 "
-                                    }
-                                    Text(
-                                        text = "$labelEmoji${attempt.subject}",
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = SleekPurple
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = formattedDate,
-                                    fontSize = 11.sp,
-                                    color = Color(0xFF49454F)
-                                )
-                                if (attempt.answersJson.isNotBlank()) {
-                                    Text(text = if (expanded) "Tap to hide details" else "Tap to review test details 📝", fontSize = 10.sp, color = SleekPurple, modifier = Modifier.padding(top = 4.dp))
+                            Text("📭", fontSize = 56.sp)
+                            Text(
+                                text = "No scores recorded yet!",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Black,
+                                color = SleekPurple
+                            )
+                            Text(
+                                text = "When the kid plays a quiz, their results, stars, and completion history will appear here.",
+                                fontSize = 13.sp,
+                                color = Color(0xFF6C757D),
+                                lineHeight = 20.sp,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Text(
+                            text = "Progress Overview 📈",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Black,
+                            color = SleekPurple,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+
+                        // Summary stats row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // Sessions card
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
+                                border = BorderStroke(1.dp, Color(0xFFA5D6A7))
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(14.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text("🎮", fontSize = 24.sp)
+                                    Text("$totalSessions", fontSize = 22.sp, fontWeight = FontWeight.Black, color = Color(0xFF2E7D32))
+                                    Text("Sessions", fontSize = 11.sp, color = Color(0xFF388E3C), fontWeight = FontWeight.Bold)
                                 }
                             }
+                            // Stars card
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF9C4)),
+                                border = BorderStroke(1.dp, Color(0xFFFFF176))
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(14.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text("⭐", fontSize = 24.sp)
+                                    Text("$totalStars", fontSize = 22.sp, fontWeight = FontWeight.Black, color = Color(0xFFF9A825))
+                                    Text("Stars Earned", fontSize = 11.sp, color = Color(0xFFF57F17), fontWeight = FontWeight.Bold)
+                                }
+                            }
+                            // Accuracy card
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
+                                border = BorderStroke(1.dp, Color(0xFF90CAF9))
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(14.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text("🎯", fontSize = 24.sp)
+                                    Text("$avgAccuracy%", fontSize = 22.sp, fontWeight = FontWeight.Black, color = Color(0xFF1565C0))
+                                    Text("Accuracy", fontSize = 11.sp, color = Color(0xFF1976D2), fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
 
-                            // Score metrics
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text(
-                                    text = "${attempt.score} / ${attempt.totalQuestions} Right",
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = if (attempt.score == attempt.totalQuestions) Color(0xFF28A745) else SleekPurple
-                                )
-                                Row {
-                                    for (i in 1..attempt.starsEarned) {
-                                        Text(text = "⭐", fontSize = 12.sp)
+                        // Perfect sessions badge
+                        if (perfectSessions > 0) {
+                            Card(
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFF3E5F5)),
+                                border = BorderStroke(1.dp, Color(0xFFCE93D8)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(16.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("🏆", fontSize = 28.sp)
+                                    Column {
+                                        Text("$perfectSessions Perfect Score${if (perfectSessions > 1) "s" else ""}!", fontWeight = FontWeight.Black, fontSize = 14.sp, color = Color(0xFF6A1B9A))
+                                        Text("Amazing! Got every question right.", fontSize = 12.sp, color = Color(0xFF8E24AA))
                                     }
                                 }
                             }
                         }
 
-                        if (expanded && attempt.answersJson.isNotBlank()) {
-                            HorizontalDivider(color = SleekBorderLight, thickness = 1.dp)
-                            
-                            val parsedDetails = remember(attempt.answersJson) {
-                                val list = mutableListOf<Triple<String, Triple<String, String, Boolean>, String>>() // Q, <UStr, CStr, IsCorrect>, Err
-                                try {
-                                    val jArray = org.json.JSONArray(attempt.answersJson)
-                                    for (i in 0 until jArray.length()) {
-                                        val obj = jArray.getJSONObject(i)
-                                        val qText = obj.getString("q")
-                                        val optsArray = obj.getJSONArray("opts")
-                                        val cIdx = obj.getInt("c")
-                                        val sIdx = obj.getInt("s")
-                                        val isCorrect = cIdx == sIdx
-                                        val uStr = if (sIdx in 0 until optsArray.length()) optsArray.getString(sIdx) else "Out of Time / Skipped"
-                                        val cStr = if (cIdx in 0 until optsArray.length()) optsArray.getString(cIdx) else ""
-                                        list.add(Triple(qText, Triple(uStr, cStr, isCorrect), ""))
-                                    }
-                                } catch (e: Exception) {
-                                    list.add(Triple("", Triple("", "", false), "Error parsing details"))
+                        // Full history card
+                        Card(
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
+                            border = BorderStroke(1.dp, Color(0xFFBBDEFB)),
+                            modifier = Modifier.fillMaxWidth().clickable { activeMode = 0 }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(20.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier.size(56.dp).background(Color(0xFFBBDEFB), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) { Text("📋", fontSize = 28.sp) }
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
+                                    Text("Full History", fontWeight = FontWeight.Black, fontSize = 15.sp, color = SleekTextDark)
+                                    Text("Browse all $totalSessions quiz sessions in one place", fontSize = 12.sp, color = Color(0xFF6C757D), lineHeight = 18.sp)
                                 }
-                                list
+                                Text("›", fontSize = 24.sp, color = SleekPurple, fontWeight = FontWeight.Bold)
                             }
+                        }
 
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                parsedDetails.forEachIndexed { i, detail ->
-                                    if (detail.third.isNotEmpty()) {
-                                        Text("Failed to parse test details.", color = Color.Red, fontSize = 12.sp)
-                                    } else {
-                                        val qText = detail.first
-                                        val uStr = detail.second.first
-                                        val cStr = detail.second.second
-                                        val isCorrect = detail.second.third
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(bottom = 8.dp)
-                                                .background(if (isCorrect) Color(0xFFF1F8F1) else Color(0xFFFCF2F2), RoundedCornerShape(8.dp))
-                                                .border(1.dp, if (isCorrect) Color(0xFFD4EDDA) else Color(0xFFF8D7DA), RoundedCornerShape(8.dp))
-                                                .padding(12.dp)
-                                        ) {
-                                            Column {
-                                                Text("Q${i + 1}: $qText", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = SleekTextDark)
-                                                Spacer(modifier = Modifier.height(4.dp))
-                                                Text("Given Answer: $uStr", color = if (isCorrect) Color(0xFF28A745) else Color(0xFFDC3545), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                                if (!isCorrect) {
-                                                    Text("Correct Answer: $cStr", color = Color(0xFF28A745), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                                }
-                                            }
-                                        }
+                        // Subject breakdown section
+                        Text(
+                            text = "By Subject",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Black,
+                            color = SleekPurple,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+
+                        val subjectColors = mapOf(
+                            "Math" to Pair(Color(0xFFE8F5E9), Color(0xFFA5D6A7)),
+                            "English" to Pair(Color(0xFFFFF9C4), Color(0xFFFFF176)),
+                            "Science" to Pair(Color(0xFFFCE4EC), Color(0xFFF48FB1)),
+                            "General Knowledge" to Pair(Color(0xFFF3E5F5), Color(0xFFCE93D8))
+                        )
+                        val subjectEmojis = mapOf(
+                            "Math" to "🧮", "English" to "📝", "Science" to "🧪", "General Knowledge" to "🌍"
+                        )
+
+                        subjectGroups.entries.forEachIndexed { idx, (subject, attempts) ->
+                            val colors = subjectColors[subject] ?: Pair(Color(0xFFF5F5F5), Color(0xFFBDBDBD))
+                            val emoji = subjectEmojis[subject] ?: "🌟"
+                            val subAvg = if (attempts.isNotEmpty())
+                                (attempts.sumOf { it.score }.toFloat() / attempts.sumOf { it.totalQuestions }.toFloat() * 100).toInt()
+                            else 0
+                            Card(
+                                shape = RoundedCornerShape(20.dp),
+                                colors = CardDefaults.cardColors(containerColor = colors.first),
+                                border = BorderStroke(1.dp, colors.second),
+                                modifier = Modifier.fillMaxWidth().clickable {
+                                    selectedSubject = subject
+                                    activeMode = 1
+                                }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(20.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier.size(56.dp).background(colors.second, CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) { Text(emoji, fontSize = 28.sp) }
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
+                                        Text(subject, fontWeight = FontWeight.Black, fontSize = 15.sp, color = SleekTextDark)
+                                        Text("${attempts.size} session${if (attempts.size != 1) "s" else ""} · Avg accuracy: $subAvg%", fontSize = 12.sp, color = Color(0xFF6C757D), lineHeight = 18.sp)
+                                    }
+                                    Text("›", fontSize = 24.sp, color = SleekPurple, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            0 -> {
+                // FULL HISTORY LIST
+                val sortedAttempts = allAttempts.sortedByDescending { it.timestamp }
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        IconButton(
+                            onClick = { activeMode = -1 },
+                            modifier = Modifier.size(36.dp).background(SleekSurfaceVariant, CircleShape)
+                        ) {
+                            Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back", tint = SleekPurple, modifier = Modifier.size(18.dp))
+                        }
+                        Text("All Sessions (${sortedAttempts.size})", fontWeight = FontWeight.Black, fontSize = 16.sp, color = SleekPurple)
+                    }
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(sortedAttempts) { attempt ->
+                            ScoreAttemptCard(attempt = attempt)
+                        }
+                    }
+                }
+            }
+            1 -> {
+                // SUBJECT-FILTERED LIST
+                val filtered = allAttempts.filter { it.subject == selectedSubject }.sortedByDescending { it.timestamp }
+                val subEmojis = mapOf("Math" to "🧮", "English" to "📝", "Science" to "🧪", "General Knowledge" to "🌍")
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        IconButton(
+                            onClick = { activeMode = -1; selectedSubject = "" },
+                            modifier = Modifier.size(36.dp).background(SleekSurfaceVariant, CircleShape)
+                        ) {
+                            Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back", tint = SleekPurple, modifier = Modifier.size(18.dp))
+                        }
+                        Text("${subEmojis[selectedSubject] ?: "🌟"} $selectedSubject (${filtered.size})", fontWeight = FontWeight.Black, fontSize = 16.sp, color = SleekPurple)
+                    }
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(filtered) { attempt ->
+                            ScoreAttemptCard(attempt = attempt)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ScoreAttemptCard(attempt: QuizAttempt) {
+    val dateFmt = SimpleDateFormat("MMM dd, yyyy - hh:mm a", Locale.getDefault())
+    val formattedDate = dateFmt.format(Date(attempt.timestamp))
+    var expanded by remember { mutableStateOf(false) }
+    val pct = if (attempt.totalQuestions > 0) (attempt.score.toFloat() / attempt.totalQuestions * 100).toInt() else 0
+    val scoreColor = when {
+        pct == 100 -> Color(0xFF2E7D32)
+        pct >= 70 -> Color(0xFF1565C0)
+        else -> Color(0xFFC62828)
+    }
+    val subjectEmoji = when (attempt.subject) {
+        "Math" -> "🧮"; "English" -> "📝"; "General Knowledge" -> "🌍"; "Science" -> "🧪"; else -> "🌟"
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { if (attempt.answersJson.isNotBlank()) expanded = !expanded },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = SleekSurfaceVariant),
+        border = BorderStroke(1.dp, SleekBorderLight),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(scoreColor.copy(alpha = 0.1f), CircleShape)
+                            .border(1.5.dp, scoreColor.copy(alpha = 0.3f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) { Text(subjectEmoji, fontSize = 22.sp) }
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(attempt.subject, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = SleekTextDark)
+                        Text(formattedDate, fontSize = 11.sp, color = Color(0xFF6C757D))
+                        if (attempt.answersJson.isNotBlank()) {
+                            Text(
+                                text = if (expanded) "▲ Hide Details" else "▼ View Details",
+                                fontSize = 10.sp,
+                                color = SleekPurple,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "${attempt.score}/${attempt.totalQuestions}",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Black,
+                        color = scoreColor
+                    )
+                    Text("$pct%", fontSize = 11.sp, color = scoreColor, fontWeight = FontWeight.Bold)
+                    Row { repeat(attempt.starsEarned) { Text("⭐", fontSize = 12.sp) } }
+                }
+            }
+
+            if (expanded && attempt.answersJson.isNotBlank()) {
+                HorizontalDivider(color = SleekBorderLight, thickness = 1.dp)
+                val parsedDetails = remember(attempt.answersJson) {
+                    val list = mutableListOf<Triple<String, Triple<String, String, Boolean>, String>>()
+                    try {
+                        val jArray = org.json.JSONArray(attempt.answersJson)
+                        for (i in 0 until jArray.length()) {
+                            val obj = jArray.getJSONObject(i)
+                            val qText = obj.getString("q")
+                            val optsArray = obj.getJSONArray("opts")
+                            val cIdx = obj.getInt("c")
+                            val sIdx = obj.getInt("s")
+                            val isCorrect = cIdx == sIdx
+                            val uStr = if (sIdx in 0 until optsArray.length()) optsArray.getString(sIdx) else "Out of Time / Skipped"
+                            val cStr = if (cIdx in 0 until optsArray.length()) optsArray.getString(cIdx) else ""
+                            list.add(Triple(qText, Triple(uStr, cStr, isCorrect), ""))
+                        }
+                    } catch (e: Exception) {
+                        list.add(Triple("", Triple("", "", false), "Error parsing details"))
+                    }
+                    list
+                }
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    parsedDetails.forEachIndexed { i, detail ->
+                        if (detail.third.isNotEmpty()) {
+                            Text("Failed to parse test details.", color = Color.Red, fontSize = 12.sp)
+                        } else {
+                            val isCorrect = detail.second.third
+                            val uStr = detail.second.first
+                            val cStr = detail.second.second
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(if (isCorrect) Color(0xFFF1F8F1) else Color(0xFFFCF2F2), RoundedCornerShape(10.dp))
+                                    .border(1.dp, if (isCorrect) Color(0xFFD4EDDA) else Color(0xFFF8D7DA), RoundedCornerShape(10.dp))
+                                    .padding(12.dp)
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Text(if (isCorrect) "✅" else "❌", fontSize = 14.sp)
+                                        Text("Q${i + 1}: ${detail.first}", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = SleekTextDark, lineHeight = 16.sp)
+                                    }
+                                    Text("Answer: $uStr", color = if (isCorrect) Color(0xFF2E7D32) else Color(0xFFC62828), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    if (!isCorrect) {
+                                        Text("Correct: $cStr", color = Color(0xFF2E7D32), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
