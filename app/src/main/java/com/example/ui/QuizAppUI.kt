@@ -4409,147 +4409,322 @@ fun ParentSubjectsTab(viewModel: QuizViewModel) {
 @Composable
 fun ParentArchiveTab(viewModel: QuizViewModel, allQuestions: List<Question>) {
     val archivedQuestions = remember(allQuestions) { allQuestions.filter { it.isArchived } }
-    var filterSubject by remember { mutableStateOf("All") }
-    val availableSubjects = remember(archivedQuestions) { listOf("All") + archivedQuestions.map { it.subject }.distinct().sorted() }
 
-    if (archivedQuestions.isEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(text = "🗄️", fontSize = 48.sp)
-                Text(
-                    text = "No archived questions!",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = SleekPurple
-                )
-                Text(
-                    text = "When your child completes a quiz, the questions will be moved here. You can reactivate them anytime.",
-                    fontSize = 13.sp,
-                    color = Color(0xFF49454F),
-                    lineHeight = 18.sp,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-    } else {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Subject Filter Row
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(availableSubjects) { sub ->
-                    val isSel = filterSubject == sub
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                color = if (isSel) SleekPurple else SleekSurfaceVariant,
-                                shape = RoundedCornerShape(16.dp)
-                            )
-                            .border(1.dp, if (isSel) SleekPurple else SleekBorderLight, RoundedCornerShape(16.dp))
-                            .clickable { filterSubject = sub }
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        Text(
-                            text = sub,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isSel) Color.White else SleekTextDark
-                        )
-                    }
-                }
-            }
+    // -1: Landing Hub, 0: Full Archive List, 1: Subject-filtered list
+    var activeMode by remember { mutableStateOf(-1) }
+    var selectedSubject by remember { mutableStateOf("") }
+    var showRestoreAllDialog by remember { mutableStateOf(false) }
 
-            val filteredQs = if (filterSubject == "All") archivedQuestions else archivedQuestions.filter { it.subject == filterSubject }
+    androidx.activity.compose.BackHandler(enabled = activeMode != -1) {
+        activeMode = -1
+        selectedSubject = ""
+    }
 
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+    // Restore All confirmation dialog
+    if (showRestoreAllDialog) {
+        Dialog(onDismissRequest = { showRestoreAllDialog = false }) {
+            Card(
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
             ) {
-                item {
+                Column(
+                    modifier = Modifier.padding(28.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text("🔁", fontSize = 48.sp)
+                    Text(
+                        text = "Restore All Questions?",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Black,
+                        color = SleekPurple,
+                        textAlign = TextAlign.Center
+                    )
+                    val restoreTarget = if (selectedSubject.isEmpty()) archivedQuestions
+                    else archivedQuestions.filter { it.subject == selectedSubject }
+                    Text(
+                        text = "${restoreTarget.size} questions will be moved back to the active question bank.",
+                        fontSize = 13.sp,
+                        color = Color(0xFF6C757D),
+                        textAlign = TextAlign.Center,
+                        lineHeight = 20.sp
+                    )
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Text(
-                            text = "Archived List (${filteredQs.size})",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Black,
-                            color = SleekPurple
-                        )
-                        Button(
-                            onClick = { 
-                                filteredQs.forEach { viewModel.updateQuestion(it.copy(isArchived = false)) }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = SleekPurple),
-                            shape = RoundedCornerShape(12.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                        OutlinedButton(
+                            onClick = { showRestoreAllDialog = false },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(2.dp, SleekPurple)
                         ) {
-                            Text("Activate All 🔁", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text("Cancel", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = SleekPurple)
+                        }
+                        Button(
+                            onClick = {
+                                restoreTarget.forEach { viewModel.updateQuestion(it.copy(isArchived = false)) }
+                                showRestoreAllDialog = false
+                                activeMode = -1
+                                selectedSubject = ""
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
+                        ) {
+                            Text("Restore ✓", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
                         }
                     }
                 }
+            }
+        }
+    }
 
-                items(filteredQs) { q ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = SleekSurfaceVariant),
-                        border = BorderStroke(1.dp, SleekBorderLight)
+    val subjectGroups = archivedQuestions.groupBy { it.subject }
+    val subjectColors = mapOf(
+        "Math" to Pair(Color(0xFFE8F5E9), Color(0xFFA5D6A7)),
+        "English" to Pair(Color(0xFFFFF9C4), Color(0xFFFFF176)),
+        "Science" to Pair(Color(0xFFFCE4EC), Color(0xFFF48FB1)),
+        "General Knowledge" to Pair(Color(0xFFF3E5F5), Color(0xFFCE93D8))
+    )
+    val subjectEmojis = mapOf(
+        "Math" to "🧮", "English" to "📝", "Science" to "🧪", "General Knowledge" to "🌍"
+    )
+
+    AnimatedContent(
+        targetState = activeMode,
+        transitionSpec = { fadeIn(animationSpec = tween(200)) togetherWith fadeOut(animationSpec = tween(200)) },
+        label = "archive_mode"
+    ) { mode ->
+        when (mode) {
+            -1 -> {
+                // LANDING HUB
+                if (archivedQuestions.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize().padding(24.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text("🗄️", fontSize = 56.sp)
+                            Text(
+                                text = "Archive is Empty!",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Black,
+                                color = SleekPurple
+                            )
+                            Text(
+                                text = "When your child completes quizzes, those questions will be archived here. You can restore them anytime.",
+                                fontSize = 13.sp,
+                                color = Color(0xFF6C757D),
+                                lineHeight = 20.sp,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Text(
+                            text = "Archived Questions 🗄️",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Black,
+                            color = SleekPurple,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+
+                        // Summary stats
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFF3E5F5)),
+                                border = BorderStroke(1.dp, Color(0xFFCE93D8))
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(14.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text("📦", fontSize = 24.sp)
+                                    Text("${archivedQuestions.size}", fontSize = 22.sp, fontWeight = FontWeight.Black, color = Color(0xFF6A1B9A))
+                                    Text("Archived", fontSize = 11.sp, color = Color(0xFF8E24AA), fontWeight = FontWeight.Bold)
+                                }
+                            }
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
+                                border = BorderStroke(1.dp, Color(0xFFA5D6A7))
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(14.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text("📚", fontSize = 24.sp)
+                                    Text("${subjectGroups.size}", fontSize = 22.sp, fontWeight = FontWeight.Black, color = Color(0xFF2E7D32))
+                                    Text("Subjects", fontSize = 11.sp, color = Color(0xFF388E3C), fontWeight = FontWeight.Bold)
+                                }
+                            }
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF9C4)),
+                                border = BorderStroke(1.dp, Color(0xFFFFF176))
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(14.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text("🔁", fontSize = 24.sp)
+                                    Text("All", fontSize = 22.sp, fontWeight = FontWeight.Black, color = Color(0xFFF9A825))
+                                    Text("Restorable", fontSize = 11.sp, color = Color(0xFFF57F17), fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+
+                        // Full Archive card
+                        Card(
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
+                            border = BorderStroke(1.dp, Color(0xFFBBDEFB)),
+                            modifier = Modifier.fillMaxWidth().clickable { activeMode = 0 }
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier.padding(20.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Box(
-                                    modifier = Modifier
-                                        .background(SleekSurfaceVariant, RoundedCornerShape(8.dp))
-                                        .border(1.dp, SleekBorderDark, RoundedCornerShape(8.dp))
-                                        .padding(horizontal = 10.dp, vertical = 4.dp)
-                                ) {
-                                    Text(
-                                        text = q.subject,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = SleekPurple
-                                    )
+                                    modifier = Modifier.size(56.dp).background(Color(0xFFBBDEFB), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) { Text("📋", fontSize = 28.sp) }
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
+                                    Text("Browse All Archived", fontWeight = FontWeight.Black, fontSize = 15.sp, color = SleekTextDark)
+                                    Text("View and restore all ${archivedQuestions.size} archived questions", fontSize = 12.sp, color = Color(0xFF6C757D), lineHeight = 18.sp)
                                 }
+                                Text("›", fontSize = 24.sp, color = SleekPurple, fontWeight = FontWeight.Bold)
+                            }
+                        }
 
-                                Button(
-                                    onClick = { viewModel.updateQuestion(q.copy(isArchived = false)) },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF28A745)),
-                                    shape = RoundedCornerShape(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-                                    modifier = Modifier.height(30.dp)
+                        // By Subject section
+                        Text(
+                            text = "By Subject",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Black,
+                            color = SleekPurple,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+
+                        subjectGroups.entries.forEach { (subject, qs) ->
+                            val colors = subjectColors[subject] ?: Pair(Color(0xFFF5F5F5), Color(0xFFBDBDBD))
+                            val emoji = subjectEmojis[subject] ?: "🌟"
+                            Card(
+                                shape = RoundedCornerShape(20.dp),
+                                colors = CardDefaults.cardColors(containerColor = colors.first),
+                                border = BorderStroke(1.dp, colors.second),
+                                modifier = Modifier.fillMaxWidth().clickable {
+                                    selectedSubject = subject
+                                    activeMode = 1
+                                }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(20.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text("Activate ✓", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    Box(
+                                        modifier = Modifier.size(56.dp).background(colors.second, CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) { Text(emoji, fontSize = 28.sp) }
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
+                                        Text(subject, fontWeight = FontWeight.Black, fontSize = 15.sp, color = SleekTextDark)
+                                        Text("${qs.size} question${if (qs.size != 1) "s" else ""} archived", fontSize = 12.sp, color = Color(0xFF6C757D), lineHeight = 18.sp)
+                                    }
+                                    Text("›", fontSize = 24.sp, color = SleekPurple, fontWeight = FontWeight.Bold)
                                 }
                             }
-
-                            Text(
-                                text = q.questionText,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = SleekTextDark
-                            )
+                        }
+                    }
+                }
+            }
+            0 -> {
+                // FULL ARCHIVE LIST
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            IconButton(
+                                onClick = { activeMode = -1 },
+                                modifier = Modifier.size(36.dp).background(SleekSurfaceVariant, CircleShape)
+                            ) {
+                                Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = SleekPurple, modifier = Modifier.size(18.dp))
+                            }
+                            Text("All Archived (${archivedQuestions.size})", fontWeight = FontWeight.Black, fontSize = 16.sp, color = SleekPurple)
+                        }
+                        TextButton(onClick = { showRestoreAllDialog = true }) {
+                            Text("Restore All 🔁", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
+                        }
+                    }
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(archivedQuestions) { q ->
+                            ArchiveQuestionCard(q = q, onRestore = { viewModel.updateQuestion(q.copy(isArchived = false)) })
+                        }
+                    }
+                }
+            }
+            1 -> {
+                // SUBJECT-FILTERED LIST
+                val filtered = archivedQuestions.filter { it.subject == selectedSubject }
+                val emoji = subjectEmojis[selectedSubject] ?: "🌟"
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            IconButton(
+                                onClick = { activeMode = -1; selectedSubject = "" },
+                                modifier = Modifier.size(36.dp).background(SleekSurfaceVariant, CircleShape)
+                            ) {
+                                Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = SleekPurple, modifier = Modifier.size(18.dp))
+                            }
+                            Text("$emoji $selectedSubject (${filtered.size})", fontWeight = FontWeight.Black, fontSize = 16.sp, color = SleekPurple)
+                        }
+                        if (filtered.isNotEmpty()) {
+                            TextButton(onClick = { showRestoreAllDialog = true }) {
+                                Text("Restore All 🔁", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
+                            }
+                        }
+                    }
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(filtered) { q ->
+                            ArchiveQuestionCard(q = q, onRestore = { viewModel.updateQuestion(q.copy(isArchived = false)) })
                         }
                     }
                 }
@@ -4557,6 +4732,123 @@ fun ParentArchiveTab(viewModel: QuizViewModel, allQuestions: List<Question>) {
         }
     }
 }
+
+@Composable
+private fun ArchiveQuestionCard(q: Question, onRestore: () -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    val subjectEmoji = when (q.subject) {
+        "Math" -> "🧮"; "English" -> "📝"; "General Knowledge" -> "🌍"; "Science" -> "🧪"; else -> "🌟"
+    }
+    val subjectBg = when (q.subject) {
+        "Math" -> Color(0xFFE8F5E9); "English" -> Color(0xFFFFF9C4)
+        "Science" -> Color(0xFFFCE4EC); "General Knowledge" -> Color(0xFFF3E5F5)
+        else -> Color(0xFFF5F5F5)
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = SleekSurfaceVariant),
+        border = BorderStroke(1.dp, SleekBorderLight),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded }
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(subjectBg, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) { Text(subjectEmoji, fontSize = 20.sp) }
+
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(
+                        text = q.subject,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = SleekPurple
+                    )
+                    Text(
+                        text = q.questionText,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = SleekTextDark,
+                        maxLines = if (expanded) Int.MAX_VALUE else 2,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = if (expanded) "▲ Hide answers" else "▼ Show answers",
+                        fontSize = 10.sp,
+                        color = SleekPurple,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Button(
+                    onClick = onRestore,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.height(32.dp)
+                ) {
+                    Text("Restore ✓", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            if (expanded) {
+                HorizontalDivider(color = SleekBorderLight, thickness = 1.dp)
+                Column(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    val opts = listOf(q.optionA, q.optionB, q.optionC, q.optionD)
+                    opts.forEachIndexed { i, opt ->
+                        if (opt.isNotBlank()) {
+                            val isCorrect = i == q.correctOptionIndex
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(
+                                        if (isCorrect) Color(0xFFF1F8F1) else Color.Transparent,
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .then(
+                                        if (isCorrect) Modifier.border(1.dp, Color(0xFFD4EDDA), RoundedCornerShape(8.dp))
+                                        else Modifier
+                                    )
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = if (isCorrect) "✅" else "${('A'.code + i).toChar()}.",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isCorrect) Color(0xFF2E7D32) else Color(0xFF6C757D)
+                                )
+                                Text(
+                                    text = opt,
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isCorrect) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isCorrect) Color(0xFF2E7D32) else SleekTextDark
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
 
 @Composable
 fun QuestionCard(question: Question, isCustom: Boolean, onDelete: () -> Unit) {
