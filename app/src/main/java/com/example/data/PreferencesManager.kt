@@ -27,6 +27,11 @@ class PreferencesManager(context: Context) {
         private const val KEY_DEFAULT_QUESTIONS_CLEARED = "default_questions_cleared"
         private const val KEY_SUBJECT_TIMERS = "subject_timers"
         private const val KEY_LAST_CLAIMED_LEVEL = "last_claimed_level"
+        private const val KEY_QUIZ_DATES_HISTORY = "quiz_dates_history"
+        private const val KEY_SOUND_MUTED = "sound_muted"
+        private const val KEY_REMINDER_ENABLED = "reminder_enabled"
+        private const val KEY_CELEBRATED_MILESTONES = "celebrated_milestones"
+        private const val HISTORY_CAP = 60
     }
 
     var defaultQuestionsCleared: Boolean
@@ -124,11 +129,57 @@ class PreferencesManager(context: Context) {
         } else if (lastDate.isEmpty()) {
             // First time completing a quiz
             streakCount = 1
+            celebratedMilestones = emptySet()
         } else {
             // More than a day gap, start new streak from 1
             streakCount = 1
+            // New streak run: earlier milestones can be celebrated again
+            celebratedMilestones = emptySet()
         }
         lastQuizDate = today
+    }
+
+    var soundMuted: Boolean
+        get() = prefs.getBoolean(KEY_SOUND_MUTED, false)
+        set(value) = prefs.edit().putBoolean(KEY_SOUND_MUTED, value).apply()
+
+    var reminderEnabled: Boolean
+        get() = prefs.getBoolean(KEY_REMINDER_ENABLED, true)
+        set(value) = prefs.edit().putBoolean(KEY_REMINDER_ENABLED, value).apply()
+
+    var celebratedMilestones: Set<String>
+        get() = prefs.getStringSet(KEY_CELEBRATED_MILESTONES, emptySet()) ?: emptySet()
+        set(value) = prefs.edit().putStringSet(KEY_CELEBRATED_MILESTONES, value).apply()
+
+    fun hasCelebratedMilestone(milestone: Int): Boolean =
+        milestone.toString() in celebratedMilestones
+
+    fun markMilestoneCelebrated(milestone: Int) {
+        celebratedMilestones = celebratedMilestones + milestone.toString()
+    }
+
+    /** Days (yyyy-MM-dd) on which at least one quiz was completed; drives the streak calendar. */
+    fun getQuizDates(): Set<String> {
+        val raw = prefs.getString(KEY_QUIZ_DATES_HISTORY, null)
+        if (raw == null) {
+            // Migration: seed history from the legacy single lastQuizDate
+            return if (lastQuizDate.isNotEmpty()) setOf(lastQuizDate) else emptySet()
+        }
+        return try {
+            val arr = org.json.JSONArray(raw)
+            (0 until arr.length()).map { arr.getString(it) }.toSet()
+        } catch (e: Exception) {
+            emptySet()
+        }
+    }
+
+    fun recordQuizDate() {
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val today = sdf.format(Date())
+        val dates = (getQuizDates() + today).sorted().takeLast(HISTORY_CAP)
+        val arr = org.json.JSONArray()
+        dates.forEach { arr.put(it) }
+        prefs.edit().putString(KEY_QUIZ_DATES_HISTORY, arr.toString()).apply()
     }
 
     fun addStars(count: Int) {

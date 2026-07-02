@@ -110,6 +110,32 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
     var activeScore by mutableStateOf(0)
         private set
 
+    // Game mechanics: combos + hearts with one mascot rescue per quiz
+    var comboCount by mutableStateOf(0)
+        private set
+    var maxComboThisQuiz by mutableStateOf(0)
+        private set
+    var heartsRemaining by mutableStateOf(MAX_HEARTS)
+        private set
+    var rescueUsed by mutableStateOf(false)
+        private set
+    var showRescueOffer by mutableStateOf(false)
+        private set
+    var lastAnswerCorrect by mutableStateOf<Boolean?>(null)
+        private set
+    var endedEarly by mutableStateOf(false)
+        private set
+
+    // Streak celebration state
+    var pendingMilestone by mutableStateOf<Int?>(null)
+    var isNewStreakDay by mutableStateOf(false)
+        private set
+
+    companion object {
+        const val MAX_HEARTS = 3
+        val STREAK_MILESTONES = listOf(3, 7, 14, 30, 100)
+    }
+
     init {
         viewModelScope.launch {
             // Ensure repository has default questions loaded if they haven't been cleared
@@ -157,12 +183,22 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
             isAnswerChecked = false
             activeScore = 0
             userAnswers = emptyList()
+            comboCount = 0
+            maxComboThisQuiz = 0
+            heartsRemaining = MAX_HEARTS
+            rescueUsed = false
+            showRescueOffer = false
+            lastAnswerCorrect = null
+            endedEarly = false
+            isNewStreakDay = false
             navigateTo(Screen.QuizSession(subject))
         }
     }
 
     fun selectOption(idx: Int) {
-        selectedOptionIdx = idx
+        if (!isAnswerChecked) {
+            selectedOptionIdx = idx
+        }
     }
 
     fun submitAnswerAndNext(subject: String) {
@@ -181,6 +217,68 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
                 forceEndQuiz(subject)
             }
         }
+    }
+
+    /**
+     * Locks in the selected answer: scores it, updates combo and hearts, and
+     * flips [isAnswerChecked] so the UI can show inline feedback.
+     * Returns whether the answer was correct, or null if there was nothing to evaluate.
+     */
+    fun evaluateAnswer(): Boolean? {
+        if (selectedOptionIdx == -1 || isAnswerChecked) return null
+        val currentQ = activeQuestions.getOrNull(currentQuestionIdx) ?: return null
+        val correct = selectedOptionIdx == currentQ.correctOptionIndex
+        isAnswerChecked = true
+        lastAnswerCorrect = correct
+        userAnswers = userAnswers + selectedOptionIdx
+        if (correct) {
+            activeScore++
+            comboCount++
+            if (comboCount > maxComboThisQuiz) maxComboThisQuiz = comboCount
+        } else {
+            comboCount = 0
+            if (heartsRemaining > 0) heartsRemaining--
+        }
+        return correct
+    }
+
+    /** Called by the UI after the inline feedback delay. */
+    fun advanceAfterFeedback(subject: String) {
+        if (!isAnswerChecked) return
+        isAnswerChecked = false
+        lastAnswerCorrect = null
+        val isLastQuestion = currentQuestionIdx >= activeQuestions.size - 1
+        when {
+            // Nothing left to answer — a rescue would have nothing to rescue,
+            // so the quiz just ends on whatever score was earned.
+            isLastQuestion -> forceEndQuiz(subject)
+            heartsRemaining == 0 && !rescueUsed -> showRescueOffer = true
+            heartsRemaining == 0 && rescueUsed -> {
+                endedEarly = true
+                forceEndQuiz(subject)
+            }
+            else -> {
+                currentQuestionIdx++
+                selectedOptionIdx = -1
+            }
+        }
+    }
+
+    /** Mascot rescue: one extra heart, once per quiz. */
+    fun acceptRescue(subject: String) {
+        showRescueOffer = false
+        rescueUsed = true
+        heartsRemaining = 1
+        // advanceAfterFeedback never offers a rescue on the last question, so
+        // there is always at least one more question left to move to here.
+        currentQuestionIdx++
+        selectedOptionIdx = -1
+    }
+
+    fun declineRescue(subject: String) {
+        showRescueOffer = false
+        endedEarly = true
+        forceEndQuiz(subject)
     }
 
     fun forceEndQuiz(subject: String) {
@@ -217,19 +315,38 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
                 answersJson = answersJson
             )
             repository.insertAttempt(attempt)
-            
-            // Archive the attempted questions
-            activeQuestions.forEach {
+
+            // Archive only the questions that were actually presented — an
+            // early end (out of hearts, timer expiry) must not consume unseen ones
+            val presentedCount = (currentQuestionIdx + 1).coerceAtMost(totalQs)
+            activeQuestions.take(presentedCount).forEach {
                 repository.updateQuestion(it.copy(isArchived = true))
             }
-            
+
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            isNewStreakDay = preferences.lastQuizDate != sdf.format(Date())
+
             preferences.addStars(starsEarned)
             preferences.updateStreak()
+            preferences.recordQuizDate()
 
             // Update viewModel local states
             totalStars = preferences.totalStars
             streakCount = preferences.streakCount
             updateDailyGoalCompletion()
+
+            // Streak milestone reached for the first time this run? Mark all
+            // newly-passed milestones but celebrate only the highest.
+            val newMilestones = STREAK_MILESTONES.filter {
+                preferences.streakCount >= it && !preferences.hasCelebratedMilestone(it)
+            }
+            newMilestones.forEach { preferences.markMilestoneCelebrated(it) }
+            newMilestones.maxOrNull()?.let { pendingMilestone = it }
+
+            // Quiz done: push today's pending reminder to tomorrow's check
+            if (preferences.reminderEnabled) {
+                com.example.notifications.ReminderScheduler.onQuizCompleted(getApplication())
+            }
 
             navigateTo(Screen.QuizResult(subject, activeScore, totalQs, starsEarned))
         }
@@ -251,11 +368,12 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
             if (currentLevel > lastClaimedLevel) {
                 preferences.addStars(bonusStars)
                 totalStars = preferences.totalStars
-                // Set lastClaimedLevel to the NEW current level AFTER bonus stars
-                // so that bonus stars don't create an artificial level-up loop
-                val newCurrentLevel = (totalStars / 10) + 1
-                preferences.lastClaimedLevel = newCurrentLevel
-                lastClaimedLevel = newCurrentLevel
+                // Mark the level that was actually pending as claimed. If the bonus
+                // stars happen to push totalStars past another level boundary, that
+                // next level's chest must stay pending (not be silently skipped) —
+                // so we record currentLevel here, not the post-bonus level.
+                preferences.lastClaimedLevel = currentLevel
+                lastClaimedLevel = currentLevel
                 updateDailyGoalCompletion()
             }
         }

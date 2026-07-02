@@ -106,7 +106,7 @@ dependencies {
   // implementation(libs.play.services.location)
   implementation(libs.retrofit)
   implementation("com.vanniktech:android-image-cropper:4.6.0")
-  implementation("com.airbnb.android:lottie-compose:6.3.0")
+  implementation("androidx.work:work-runtime-ktx:2.9.1")
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)

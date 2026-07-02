@@ -45,11 +45,15 @@ import android.media.AudioManager
 import android.media.ToneGenerator
 import android.net.Uri
 import coil.compose.AsyncImage
-import com.airbnb.lottie.compose.*
 import com.example.viewmodel.QuizViewModel
 import com.example.viewmodel.Screen
 import com.example.data.Question
 import com.example.data.QuizAttempt
+import com.example.ui.kids.KidsTheme
+import com.example.ui.kids.Mascot
+import com.example.ui.kids.MascotState
+import com.example.ui.kids.shake
+import com.example.util.Sfx
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -115,6 +119,23 @@ val GradientStars = Brush.linearGradient(listOf(Color(0xFFFFDF00), Color(0xFFFFA
 
 @Composable
 fun QuizAppUI(viewModel: QuizViewModel) {
+    val rootContext = androidx.compose.ui.platform.LocalContext.current
+    val soundManager = remember {
+        com.example.util.SoundManager.get(rootContext).apply {
+            muted = viewModel.preferences.soundMuted
+        }
+    }
+    val hapticsManager = remember { com.example.util.HapticsManager.get(rootContext) }
+    androidx.compose.runtime.CompositionLocalProvider(
+        com.example.util.LocalSoundManager provides soundManager,
+        com.example.util.LocalHapticsManager provides hapticsManager,
+    ) {
+        QuizAppContent(viewModel)
+    }
+}
+
+@Composable
+private fun QuizAppContent(viewModel: QuizViewModel) {
     val currentScreen = viewModel.currentScreen
     val context = androidx.compose.ui.platform.LocalContext.current
     var showAppExitDialog by remember { mutableStateOf(false) }
@@ -230,6 +251,20 @@ fun QuizAppUI(viewModel: QuizViewModel) {
                 }
             }
         }
+
+        // Streak milestone celebration — renders above every screen
+        viewModel.pendingMilestone?.let { milestone ->
+            val sound = com.example.util.LocalSoundManager.current
+            val haptics = com.example.util.LocalHapticsManager.current
+            LaunchedEffect(milestone) {
+                sound.play(Sfx.MILESTONE)
+                haptics.celebrate()
+            }
+            com.example.ui.kids.MilestoneCelebrationOverlay(
+                milestone = milestone,
+                onDismiss = { viewModel.pendingMilestone = null }
+            )
+        }
     }
 }
 
@@ -254,8 +289,8 @@ fun NoQuestionsScreen(viewModel: QuizViewModel, subject: String) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                Text(text = "📭", fontSize = 64.sp)
-                
+                Mascot(state = MascotState.THINKING, modifier = Modifier.size(110.dp))
+
                 Text(
                     text = "No questions available for $subject!",
                     fontSize = 22.sp,
@@ -283,351 +318,6 @@ fun NoQuestionsScreen(viewModel: QuizViewModel, subject: String) {
                     Text("Back to Home 🏠", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun CorrectAnswerCharacter() {
-    val transition = rememberInfiniteTransition(label = "correct_anim")
-    val bounceY by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = -35f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(450, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "bounce"
-    )
-    val scaleX by transition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.12f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(450, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "scale"
-    )
-    
-    val sunburstRotation by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(6000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "sunburst"
-    )
-    
-    val eyeWinkScale by transition.animateFloat(
-        initialValue = 1f,
-        targetValue = 0.1f,
-        animationSpec = infiniteRepeatable(
-            animation = keyframes {
-                durationMillis = 2000
-                1.0f at 0
-                1.0f at 1600
-                0.1f at 1800
-                1.0f at 2000
-            },
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "wink"
-    )
-
-    val sparkProgress by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "sparks"
-    )
-
-    Box(
-        modifier = Modifier.size(160.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val width = size.width
-            val height = size.height
-            val centerX = width / 2
-            val centerY = height / 2
-            
-            drawIntoCanvas { canvas ->
-                canvas.save()
-                canvas.translate(centerX, centerY)
-                canvas.rotate(sunburstRotation)
-                val rayCount = 8
-                val rayColor = Color(0xFFFFE082).copy(alpha = 0.4f)
-                val rayPath = Path()
-                rayPath.moveTo(0f, 0f)
-                val wedgeAngle = 20f
-                val rayLen = width * 0.7f
-                val rad1 = Math.toRadians(-wedgeAngle.toDouble() / 2)
-                val rad2 = Math.toRadians(wedgeAngle.toDouble() / 2)
-                rayPath.lineTo((rayLen * Math.cos(rad1)).toFloat(), (rayLen * Math.sin(rad1)).toFloat())
-                rayPath.lineTo((rayLen * Math.cos(rad2)).toFloat(), (rayLen * Math.sin(rad2)).toFloat())
-                rayPath.close()
-                
-                for (r in 0 until rayCount) {
-                    drawPath(path = rayPath, color = rayColor)
-                    canvas.rotate(360f / rayCount)
-                }
-                canvas.restore()
-            }
-        }
-
-        Box(
-            modifier = Modifier
-                .size(110.dp)
-                .graphicsLayer {
-                    translationY = bounceY
-                    this.scaleX = scaleX
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val width = size.width
-                val height = size.height
-                val centerX = width / 2
-                val centerY = height / 2
-                
-                val path = Path()
-                val outerRadius = width / 2
-                val innerRadius = outerRadius * 0.42f
-                
-                for (i in 0 until 10) {
-                    val angle = Math.toRadians((i * 36 - 90).toDouble())
-                    val r = if (i % 2 == 0) outerRadius else innerRadius
-                    val x = centerX + (r * Math.cos(angle)).toFloat()
-                    val y = centerY + (r * Math.sin(angle)).toFloat()
-                    if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
-                }
-                path.close()
-                
-                drawPath(
-                    path = path, 
-                    brush = Brush.radialGradient(
-                        colors = listOf(Color(0xFFFFF176), Color(0xFFFBC02D)),
-                        center = Offset(centerX, centerY)
-                    )
-                )
-                
-                val eyeY = centerY - 8.dp.toPx()
-                val leftEyeX = centerX - 18.dp.toPx()
-                val rightEyeX = centerX + 18.dp.toPx()
-                val eyeRadius = 5.dp.toPx()
-                
-                drawCircle(color = Color.Black, radius = eyeRadius, center = Offset(leftEyeX, eyeY))
-                drawCircle(color = Color.White, radius = 1.5f.dp.toPx(), center = Offset(leftEyeX - 1.5f.dp.toPx(), eyeY - 1.5f.dp.toPx()))
-                
-                drawIntoCanvas { canvas ->
-                    canvas.save()
-                    canvas.translate(rightEyeX, eyeY)
-                    canvas.scale(1f, eyeWinkScale)
-                    drawCircle(color = Color.Black, radius = eyeRadius, center = Offset(0f, 0f))
-                    drawCircle(color = Color.White, radius = 1.5f.dp.toPx(), center = Offset(-1.5f.dp.toPx(), -1.5f.dp.toPx()))
-                    canvas.restore()
-                }
-                
-                drawCircle(color = Color(0xFFFF8A80).copy(alpha = 0.8f), radius = 6.dp.toPx(), center = Offset(leftEyeX - 6.dp.toPx(), eyeY + 12.dp.toPx()))
-                drawCircle(color = Color(0xFFFF8A80).copy(alpha = 0.8f), radius = 6.dp.toPx(), center = Offset(rightEyeX + 6.dp.toPx(), eyeY + 12.dp.toPx()))
-                
-                val mouthPath = Path()
-                mouthPath.arcTo(
-                    rect = Rect(centerX - 10.dp.toPx(), centerY - 3.dp.toPx(), centerX + 10.dp.toPx(), centerY + 14.dp.toPx()),
-                    startAngleDegrees = 0f,
-                    sweepAngleDegrees = 180f,
-                    forceMoveTo = true
-                )
-                drawPath(path = mouthPath, color = Color.Black, style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
-            }
-        }
-
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val width = size.width
-            val height = size.height
-            val centerX = width / 2
-            val centerY = height / 2
-            
-            val angles = listOf(45, 135, 225, 315, 90, 270)
-            angles.forEach { angle ->
-                val rad = Math.toRadians(angle.toDouble())
-                val startDist = width * 0.35f
-                val endDist = width * 0.55f
-                val currentDist = startDist + (endDist - startDist) * sparkProgress
-                val px = centerX + (currentDist * Math.cos(rad)).toFloat()
-                val py = centerY + (currentDist * Math.sin(rad)).toFloat()
-                
-                val scale = (1f - sparkProgress) * 5.dp.toPx()
-                drawCircle(
-                    color = Color(0xFFFFD54F),
-                    radius = scale,
-                    center = Offset(px, py)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun IncorrectAnswerCharacter() {
-    val transition = rememberInfiniteTransition(label = "incorrect_anim")
-    
-    val shakeX by transition.animateFloat(
-        initialValue = -5f,
-        targetValue = 5f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(100, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "shake"
-    )
-    
-    val tearProgress1 by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(900, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "tear1"
-    )
-    val tearProgress2 by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "tear2"
-    )
-    
-    val lightningAlpha by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = keyframes {
-                durationMillis = 3000
-                0f at 0
-                0f at 2000
-                0.8f at 2100
-                0f at 2200
-                0.8f at 2250
-                0f at 2400
-            },
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "lightning"
-    )
-    
-    Box(
-        modifier = Modifier.size(160.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        if (lightningAlpha > 0f) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val width = size.width
-                val height = size.height
-                val centerX = width / 2
-                val centerY = height / 2
-                
-                val path = Path()
-                path.moveTo(centerX + 15.dp.toPx(), centerY - 35.dp.toPx())
-                path.lineTo(centerX - 10.dp.toPx(), centerY)
-                path.lineTo(centerX + 5.dp.toPx(), centerY)
-                path.lineTo(centerX - 15.dp.toPx(), centerY + 35.dp.toPx())
-                path.lineTo(centerX + 10.dp.toPx(), centerY - 5.dp.toPx())
-                path.lineTo(centerX - 2.dp.toPx(), centerY - 5.dp.toPx())
-                path.close()
-                
-                drawPath(path = path, color = Color(0xFFFFB300).copy(alpha = lightningAlpha))
-            }
-        }
-
-        Box(
-            modifier = Modifier
-                .size(120.dp)
-                .graphicsLayer {
-                    translationX = shakeX
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val width = size.width
-                val height = size.height
-                val centerX = width / 2
-                val centerY = height / 2
-                
-                val cloudColor = Color(0xFF90A4AE)
-                drawCircle(color = cloudColor, radius = 25.dp.toPx(), center = Offset(centerX - 24.dp.toPx(), centerY + 5.dp.toPx()))
-                drawCircle(color = cloudColor, radius = 32.dp.toPx(), center = Offset(centerX, centerY - 10.dp.toPx()))
-                drawCircle(color = cloudColor, radius = 25.dp.toPx(), center = Offset(centerX + 24.dp.toPx(), centerY + 5.dp.toPx()))
-                drawRoundRect(
-                    color = cloudColor,
-                    topLeft = Offset(centerX - 35.dp.toPx(), centerY),
-                    size = Size(70.dp.toPx(), 22.dp.toPx()),
-                    cornerRadius = CornerRadius(10.dp.toPx(), 10.dp.toPx())
-                )
-                
-                val leftEyePath = Path()
-                leftEyePath.arcTo(
-                    rect = Rect(centerX - 22.dp.toPx(), centerY - 12.dp.toPx(), centerX - 12.dp.toPx(), centerY - 4.dp.toPx()),
-                    startAngleDegrees = 180f,
-                    sweepAngleDegrees = 180f,
-                    forceMoveTo = true
-                )
-                drawPath(path = leftEyePath, color = Color(0xFF263238), style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
-                
-                val rightEyePath = Path()
-                rightEyePath.arcTo(
-                    rect = Rect(centerX + 12.dp.toPx(), centerY - 12.dp.toPx(), centerX + 22.dp.toPx(), centerY - 4.dp.toPx()),
-                    startAngleDegrees = 180f,
-                    sweepAngleDegrees = 180f,
-                    forceMoveTo = true
-                )
-                drawPath(path = rightEyePath, color = Color(0xFF263238), style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
-                
-                val mouthPath = Path()
-                mouthPath.arcTo(
-                    rect = Rect(centerX - 8.dp.toPx(), centerY + 4.dp.toPx(), centerX + 8.dp.toPx(), centerY + 14.dp.toPx()),
-                    startAngleDegrees = 180f,
-                    sweepAngleDegrees = 180f,
-                    forceMoveTo = true
-                )
-                drawPath(path = mouthPath, color = Color(0xFF263238), style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
-            }
-        }
-
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val centerX = size.width / 2
-            val centerY = size.height / 2
-            
-            val d1x = centerX - 15.dp.toPx()
-            val d1y_start = centerY + 15.dp.toPx()
-            val d1y_end = centerY + 55.dp.toPx()
-            val d1y = d1y_start + (d1y_end - d1y_start) * tearProgress1
-            val d1alpha = 1f - tearProgress1
-            
-            drawCircle(
-                color = Color(0xFF29B6F6).copy(alpha = d1alpha),
-                radius = 3.dp.toPx(),
-                center = Offset(d1x + shakeX, d1y)
-            )
-            
-            val d2x = centerX + 15.dp.toPx()
-            val d2y_start = centerY + 10.dp.toPx()
-            val d2y_end = centerY + 50.dp.toPx()
-            val d2y = d2y_start + (d2y_end - d2y_start) * tearProgress2
-            val d2alpha = 1f - tearProgress2
-            
-            drawCircle(
-                color = Color(0xFF29B6F6).copy(alpha = d2alpha),
-                radius = 3.dp.toPx(),
-                center = Offset(d2x + shakeX, d2y)
-            )
         }
     }
 }
@@ -754,6 +444,78 @@ fun HomeScreen(viewModel: QuizViewModel) {
     val todayCompleted = viewModel.todayQuizzesCompleted
     val dailyGoal = viewModel.dailyQuizGoal
     var showTrophyDialog by remember { mutableStateOf(false) }
+    var showStreakDialog by remember { mutableStateOf(false) }
+
+    // Streak status for today (recomputed when returning to Home)
+    val todayStr = remember(todayCompleted) {
+        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+    }
+    val todayDone = viewModel.preferences.lastQuizDate == todayStr
+    val yesterdayStr = remember(todayCompleted) {
+        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(System.currentTimeMillis() - 24 * 60 * 60 * 1000))
+    }
+    val streakAtRisk = streakCount > 0 && !todayDone && viewModel.preferences.lastQuizDate == yesterdayStr
+    val quizDates = remember(todayCompleted) { viewModel.preferences.getQuizDates() }
+
+    // Streak detail dialog: big flame + weekly calendar + next milestone
+    if (showStreakDialog) {
+        Dialog(onDismissRequest = { showStreakDialog = false }) {
+            Card(
+                shape = RoundedCornerShape(32.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(28.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    com.example.ui.kids.AnimatedFlame(
+                        size = 90.dp,
+                        intensity = (streakCount / 10f).coerceIn(0.3f, 1f),
+                        lit = streakCount > 0
+                    )
+                    Text(
+                        text = if (streakCount > 0) "$streakCount Day Streak!" else "Start your streak!",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Black,
+                        color = com.example.ui.kids.KidsTheme.FlameOrangeDeep
+                    )
+                    Text(
+                        text = when {
+                            streakCount == 0 -> "Play one quiz today to light your flame! 🔥"
+                            todayDone -> "You're safe for today — see you tomorrow!"
+                            else -> "Play a quiz today to keep it going!"
+                        },
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF6C757D),
+                        textAlign = TextAlign.Center
+                    )
+                    com.example.ui.kids.WeeklyCalendarStrip(days = com.example.ui.kids.last7Days(quizDates))
+                    val nextMilestone = QuizViewModel.STREAK_MILESTONES.firstOrNull { it > streakCount }
+                    if (nextMilestone != null) {
+                        Text(
+                            text = "${nextMilestone - streakCount} more days to the $nextMilestone-day badge! 🏅",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = SleekPurple,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    Button(
+                        onClick = { showStreakDialog = false },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = com.example.ui.kids.KidsTheme.FlameOrange),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Got it! 🔥", fontWeight = FontWeight.Black, color = Color.White)
+                    }
+                }
+            }
+        }
+    }
 
     val levelInfo = when {
         totalStars <= 5 -> Pair("Star Cadet 🚀", "Catching sweet learning stars!")
@@ -988,26 +750,25 @@ fun HomeScreen(viewModel: QuizViewModel) {
                     )
                 }
 
-                // Right Capsule (Streak)
-                Box(
-                    modifier = Modifier
-                        .background(SleekSurfaceVariant, shape = RoundedCornerShape(100.dp))
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier
-                            .border(1.dp, SleekBorderDark, shape = RoundedCornerShape(100.dp))
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        Text(text = "🔥", fontSize = 16.sp)
-                        Text(
-                            text = "$streakCount",
-                            fontWeight = FontWeight.ExtraBold,
-                            fontSize = 16.sp,
-                            color = Color(0xFF49454F)
-                        )
-                    }
+                // Right: mute toggle + streak capsule
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val sound = com.example.util.LocalSoundManager.current
+                    var muted by remember { mutableStateOf(sound.muted) }
+                    Text(
+                        text = if (muted) "🔇" else "🔊",
+                        fontSize = 18.sp,
+                        modifier = Modifier.bouncyClick {
+                            muted = !muted
+                            sound.muted = muted
+                            viewModel.preferences.soundMuted = muted
+                            if (!muted) sound.play(Sfx.TAP)
+                        }
+                    )
+                    com.example.ui.kids.StreakCapsule(
+                        streakCount = streakCount,
+                        todayDone = todayDone,
+                        onClick = { showStreakDialog = true }
+                    )
                 }
             }
         },
@@ -1107,6 +868,40 @@ fun HomeScreen(viewModel: QuizViewModel) {
                 .padding(horizontal = 24.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
+            // Mascot Greeting Section
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Mascot(
+                    state = MascotState.IDLE,
+                    modifier = Modifier.size(90.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                // Not remembered: must reflect the current device time/timezone
+                // every time Home is shown, not just whenever the app first launched.
+                val greeting = com.example.ui.kids.MascotMessages.greetingForTimeOfDay(viewModel.childName)
+                com.example.ui.kids.MascotSpeechBubble(
+                    text = greeting,
+                    visible = true
+                )
+            }
+
+            // Streak at risk? Nudge to play today (more urgent in the evening)
+            if (streakAtRisk) {
+                val isEvening = remember { java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY) >= 17 }
+                com.example.ui.kids.StreakAtRiskBanner(
+                    streakCount = streakCount,
+                    urgent = isEvening,
+                    onStartQuiz = {
+                        val allSubjects = listOf("Math", "English", "Science", "General Knowledge") + viewModel.customSubjects
+                        viewModel.startQuiz(allSubjects.random())
+                    }
+                )
+            }
+
             // Level Chest & Progress Bar
             val currentLevel = (totalStars / 10) + 1
             val nextLevelStars = currentLevel * 10
@@ -1235,16 +1030,24 @@ fun HomeScreen(viewModel: QuizViewModel) {
             }
 
             // Achievements Badges section
+            // Subject badges require real accuracy, not just showing up: at least 2
+            // completed attempts AND a 60%+ average score in that subject.
             val attempts by viewModel.allAttempts.collectAsState(initial = emptyList())
-            val mathAttempts = attempts.count { it.subject == "Math" }
-            val englishAttempts = attempts.count { it.subject == "English" }
-            val scienceAttempts = attempts.count { it.subject == "Science" }
-            val generalAttempts = attempts.count { it.subject == "General Knowledge" || it.subject == "General" }
-            
+            fun subjectMastered(subjectNames: Set<String>): Boolean {
+                val subjectAttempts = attempts.filter { it.subject in subjectNames && it.totalQuestions > 0 }
+                if (subjectAttempts.size < 2) return false
+                val totalCorrect = subjectAttempts.sumOf { it.score }
+                val totalQs = subjectAttempts.sumOf { it.totalQuestions }
+                return totalQs > 0 && totalCorrect.toFloat() / totalQs >= 0.6f
+            }
+            val mathMastered = subjectMastered(setOf("Math"))
+            val englishMastered = subjectMastered(setOf("English"))
+            val scienceMastered = subjectMastered(setOf("Science"))
+
             val kidBadges = listOf(
-                Triple("Math Wiz 🔢", "Complete 2 Math quizzes", mathAttempts >= 2),
-                Triple("Word Star 📖", "Complete 2 English quizzes", englishAttempts >= 2),
-                Triple("Explorer 🧪", "Complete 2 Science quizzes", scienceAttempts >= 2),
+                Triple("Math Wiz 🔢", "Score 60%+ over 2+ Math quizzes", mathMastered),
+                Triple("Word Star 📖", "Score 60%+ over 2+ English quizzes", englishMastered),
+                Triple("Explorer 🧪", "Score 60%+ over 2+ Science quizzes", scienceMastered),
                 Triple("Genius 🧠", "Collect 20+ Stars", totalStars >= 20),
                 Triple("Streak Master 🔥", "Daily streak of 3+", streakCount >= 3)
             )
@@ -1318,7 +1121,7 @@ fun HomeScreen(viewModel: QuizViewModel) {
             ) {
                 Column {
                     Text(
-                        text = "Hi, ${viewModel.childName}!",
+                        text = "Pick a Subject! 🎯",
                         fontSize = 26.sp,
                         fontWeight = FontWeight.Black,
                         color = SleekTextDark,
@@ -1446,6 +1249,8 @@ fun SleekSubjectCard(
     testTag: String,
     onClick: () -> Unit
 ) {
+    val sound = com.example.util.LocalSoundManager.current
+    val haptics = com.example.util.LocalHapticsManager.current
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -1459,7 +1264,11 @@ fun SleekSubjectCard(
                 .padding(bottom = 5.dp) // Creates the precise tactile border-b-4 3D button effect from CSS!
                 .background(containerColor, RoundedCornerShape(28.dp))
                 .clip(RoundedCornerShape(28.dp))
-                .bouncyClick(onClick = onClick)
+                .bouncyClick {
+                    sound.play(Sfx.TAP)
+                    haptics.tick()
+                    onClick()
+                }
                 .padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -1489,17 +1298,50 @@ fun QuizSessionScreen(viewModel: QuizViewModel, subject: String) {
     val isAnswerChecked = viewModel.isAnswerChecked
     val activeScore = viewModel.activeScore
     
-    var showPopup by remember { mutableStateOf(false) }
-    var isCorrectPopup by remember { mutableStateOf(false) }
+    val sound = com.example.util.LocalSoundManager.current
+    val haptics = com.example.util.LocalHapticsManager.current
 
-    LaunchedEffect(showPopup) {
-        if (showPopup) {
-            kotlinx.coroutines.delay(1500L)
-            showPopup = false
-            viewModel.submitAnswerAndNext(subject)
+    // Inline feedback driver: evaluateAnswer() flips isAnswerChecked; we play
+    // sound + haptics, hold for the feedback beat, then advance.
+    LaunchedEffect(isAnswerChecked) {
+        if (isAnswerChecked) {
+            val combo = viewModel.comboCount
+            if (viewModel.lastAnswerCorrect == true) {
+                when {
+                    combo >= 5 -> sound.play(com.example.util.Sfx.ON_FIRE)
+                    combo == 3 || combo == 4 -> sound.play(com.example.util.Sfx.COMBO)
+                    else -> sound.play(com.example.util.Sfx.CORRECT, rate = sound.correctPitchFor(combo))
+                }
+                if (combo >= 2) haptics.combo(combo) else haptics.success()
+            } else {
+                sound.play(com.example.util.Sfx.WRONG)
+                haptics.error()
+                kotlinx.coroutines.delay(150L)
+                sound.play(com.example.util.Sfx.HEART_BREAK)
+            }
+            kotlinx.coroutines.delay(com.example.ui.kids.KidsTheme.FEEDBACK_DURATION_MS)
+            viewModel.advanceAfterFeedback(subject)
         }
     }
-    
+
+    // Mascot rescue when hearts run out
+    if (viewModel.showRescueOffer) {
+        LaunchedEffect(Unit) { sound.play(com.example.util.Sfx.RESCUE) }
+        com.example.ui.kids.MascotRescueDialog(
+            onAccept = {
+                sound.play(com.example.util.Sfx.TAP)
+                viewModel.acceptRescue(subject)
+            },
+            onDecline = { viewModel.declineRescue(subject) },
+            mascot = {
+                Mascot(
+                    state = MascotState.ENCOURAGE,
+                    modifier = Modifier.size(110.dp)
+                )
+            }
+        )
+    }
+
     val initialTimeMinutes = viewModel.subjectTimers[subject] ?: 0
     var timeLeftSeconds by remember(subject) { mutableStateOf(initialTimeMinutes * 60) }
     val toneGenerator = remember { ToneGenerator(AudioManager.STREAM_ALARM, 100) }
@@ -1577,14 +1419,17 @@ fun QuizSessionScreen(viewModel: QuizViewModel, subject: String) {
                     }
                 }
 
-                // Current stars holder
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .background(Color(0xFFEADDFF), RoundedCornerShape(100.dp))
-                        .padding(horizontal = 14.dp, vertical = 8.dp)
-                ) {
-                    Text(text = "⭐ $activeScore", fontWeight = FontWeight.Bold, color = Color(0xFF21005D))
+                // Hearts + current stars
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    com.example.ui.kids.HeartsRow(heartsRemaining = viewModel.heartsRemaining)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .background(Color(0xFFEADDFF), RoundedCornerShape(100.dp))
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                    ) {
+                        Text(text = "⭐ $activeScore", fontWeight = FontWeight.Bold, color = Color(0xFF21005D))
+                    }
                 }
             }
         }
@@ -1609,6 +1454,55 @@ fun QuizSessionScreen(viewModel: QuizViewModel, subject: String) {
                     .padding(horizontal = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
+                // Interactive Mascot
+                val mascotState = if (isAnswerChecked) {
+                    when {
+                        viewModel.lastAnswerCorrect != true -> MascotState.ENCOURAGE
+                        viewModel.comboCount >= 3 -> MascotState.CELEBRATE
+                        else -> MascotState.CHEER
+                    }
+                } else {
+                    MascotState.IDLE
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box {
+                        Mascot(
+                            state = mascotState,
+                            modifier = Modifier.size(100.dp)
+                        )
+                        com.example.ui.kids.FloatingStarBurst(
+                            trigger = currentQuestionIdx to isAnswerChecked,
+                            visible = isAnswerChecked && viewModel.lastAnswerCorrect == true,
+                            modifier = Modifier.align(Alignment.CenterEnd)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        com.example.ui.kids.ComboBadge(comboCount = viewModel.comboCount)
+                        // Reaction line, re-rolled per answer; greeting on question 1
+                        val bubbleText = remember(currentQuestionIdx, isAnswerChecked) {
+                            when {
+                                isAnswerChecked && viewModel.lastAnswerCorrect == true ->
+                                    com.example.ui.kids.MascotMessages.forCorrect(viewModel.comboCount)
+                                isAnswerChecked ->
+                                    com.example.ui.kids.MascotMessages.forWrong()
+                                currentQuestionIdx == 0 ->
+                                    com.example.ui.kids.MascotMessages.forQuizStart()
+                                else -> ""
+                            }
+                        }
+                        com.example.ui.kids.MascotSpeechBubble(
+                            text = bubbleText,
+                            visible = bubbleText.isNotBlank()
+                        )
+                    }
+                }
+
                 // Linear Progress Segment
                 Column {
                     Row(
@@ -1629,14 +1523,8 @@ fun QuizSessionScreen(viewModel: QuizViewModel, subject: String) {
                         )
                     }
                     Spacer(modifier = Modifier.height(6.dp))
-                    LinearProgressIndicator(
-                        progress = { (currentQuestionIdx + 1).toFloat() / activeQuestions.size },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(10.dp)
-                            .clip(CircleShape),
-                        color = SleekPurple,
-                        trackColor = SleekBorderLight
+                    com.example.ui.kids.JuicyProgressBar(
+                        progress = (currentQuestionIdx + 1).toFloat() / activeQuestions.size
                     )
                 }
 
@@ -1687,12 +1575,15 @@ fun QuizSessionScreen(viewModel: QuizViewModel, subject: String) {
                 ) {
                     options.forEachIndexed { idx, optionText ->
                         if (optionText.isNotBlank()) {
+                            val isCorrectOption = idx == currentQuestion.correctOptionIndex
+                            val isWrongPick = isAnswerChecked && selectedOptionIdx == idx && !isCorrectOption
+
                             // Style determination based on whether answer is verified or not
                             val buttonColor = when {
                                 isAnswerChecked -> {
                                     when {
-                                        idx == currentQuestion.correctOptionIndex -> Color(0xFFD4EDDA) // correct green accent
-                                        selectedOptionIdx == idx -> Color(0xFFF8D7DA) // incorrect red accent
+                                        isCorrectOption -> com.example.ui.kids.KidsTheme.SuccessGreenLight
+                                        selectedOptionIdx == idx -> com.example.ui.kids.KidsTheme.ErrorRedLight
                                         else -> SleekSurfaceVariant
                                     }
                                 }
@@ -1700,19 +1591,35 @@ fun QuizSessionScreen(viewModel: QuizViewModel, subject: String) {
                                 else -> SleekSurfaceVariant
                             }
 
-                            val borderColor = if (selectedOptionIdx == idx) SleekPurple else SleekBorderLight
-                            val strokeWidth = if (selectedOptionIdx == idx) 2.dp else 1.dp
+                            val borderColor = when {
+                                isAnswerChecked && isCorrectOption -> com.example.ui.kids.KidsTheme.SuccessGreen
+                                isWrongPick -> com.example.ui.kids.KidsTheme.ErrorRed
+                                selectedOptionIdx == idx -> SleekPurple
+                                else -> SleekBorderLight
+                            }
+                            val strokeWidth = if (selectedOptionIdx == idx || (isAnswerChecked && isCorrectOption)) 2.dp else 1.dp
                             val textStyleColor = SleekTextDark
+
+                            // Correct answer pops; wrong pick shakes
+                            val revealScale by animateFloatAsState(
+                                targetValue = if (isAnswerChecked && isCorrectOption) 1.04f else 1f,
+                                animationSpec = com.example.ui.kids.kidsBouncySpring(),
+                                label = "option_reveal_$idx"
+                            )
 
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .heightIn(min = 60.dp)
+                                    .scale(revealScale)
+                                    .shake(trigger = isWrongPick)
                                     .clip(RoundedCornerShape(20.dp))
                                     .background(buttonColor)
                                     .border(strokeWidth, borderColor, RoundedCornerShape(20.dp))
                                     .testTag("quiz_option_$idx")
-                                    .clickable {
+                                    .clickable(enabled = !isAnswerChecked) {
+                                        sound.play(com.example.util.Sfx.TAP)
+                                        haptics.tick()
                                         viewModel.selectOption(idx)
                                     }
                                     .padding(horizontal = 20.dp, vertical = 14.dp),
@@ -1765,15 +1672,11 @@ fun QuizSessionScreen(viewModel: QuizViewModel, subject: String) {
                     val isLast = currentQuestionIdx == activeQuestions.size - 1
                     Button(
                         onClick = {
-                            val currentQ = activeQuestions.getOrNull(currentQuestionIdx)
-                            if (currentQ != null) {
-                                isCorrectPopup = selectedOptionIdx == currentQ.correctOptionIndex
-                                showPopup = true
-                            }
+                            viewModel.evaluateAnswer()
                         },
-                        enabled = selectedOptionIdx != -1 && !showPopup,
+                        enabled = selectedOptionIdx != -1 && !isAnswerChecked,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = SleekPurple,
+                            containerColor = KidsTheme.SuccessGreen,
                             disabledContainerColor = Color(0xFFE7E0EC)
                         ),
                         shape = RoundedCornerShape(20.dp),
@@ -1782,64 +1685,12 @@ fun QuizSessionScreen(viewModel: QuizViewModel, subject: String) {
                             .height(56.dp)
                             .testTag("submit_answer_button")
                     ) {
-                        val buttonText = if (isLast) "See Results! 🏆" else "Next 👉"
-                        Text(text = buttonText, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = if (selectedOptionIdx != -1) Color.White else Color(0xFFCAC4D0))
-                    }
-                }
-            }
-            
-            // Pop-up overlay
-            AnimatedVisibility(
-                visible = showPopup,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.4f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    var animateIn by remember { mutableStateOf(false) }
-                    LaunchedEffect(Unit) {
-                        animateIn = true
-                    }
-                    
-                    val scale by animateFloatAsState(
-                        targetValue = if (animateIn) 1f else 0f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessLow
-                        ),
-                        label = "popup_scale"
-                    )
-
-                    Card(
-                        shape = RoundedCornerShape(32.dp),
-                        colors = CardDefaults.cardColors(containerColor = if (isCorrectPopup) Color(0xFFF1F8F1) else Color(0xFFFCF2F2)),
-                        modifier = Modifier
-                            .size(220.dp)
-                            .scale(scale)
-                            .border(3.dp, if (isCorrectPopup) Color(0xFF81C784) else Color(0xFFE57373), RoundedCornerShape(32.dp))
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            if (isCorrectPopup) {
-                                CorrectAnswerCharacter()
-                            } else {
-                                IncorrectAnswerCharacter()
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = if (isCorrectPopup) "Correct! 🎉" else "Oops! 🥺",
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Black,
-                                color = if (isCorrectPopup) Color(0xFF28A745) else Color(0xFFDC3545)
-                            )
+                        val buttonText = when {
+                            isAnswerChecked -> "..."
+                            isLast -> "See Results! 🏆"
+                            else -> "Check! ✅"
                         }
+                        Text(text = buttonText, fontSize = 18.sp, fontWeight = FontWeight.Black, color = if (selectedOptionIdx != -1) Color.White else Color(0xFFCAC4D0))
                     }
                 }
             }
@@ -1855,17 +1706,26 @@ fun QuizResultScreen(
     total: Int,
     starsEarned: Int
 ) {
-    // Confetti canvas particles helper simulation to celebrate!
-    val infiniteTransition = rememberInfiniteTransition(label = "confetti")
-    val multiplier by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(animation = tween(4000, easing = LinearEasing)),
-        label = "rotation"
-    )
-
     var scratchClaimed by remember { mutableStateOf(false) }
     var scratchRevealed by remember { mutableStateOf(false) }
+
+    val sound = com.example.util.LocalSoundManager.current
+    val haptics = com.example.util.LocalHapticsManager.current
+    val endedEarly = viewModel.endedEarly
+    // A quiz only "went well" if it wasn't cut short AND the score actually
+    // clears a real bar — an early end or a low score (e.g. 2/5) shouldn't
+    // trigger the same celebration as a strong finish.
+    val quizWentWell = !endedEarly && total > 0 && score.toFloat() / total >= 0.6f
+
+    // Entry fanfare (gentler when the result isn't something to celebrate)
+    LaunchedEffect(Unit) {
+        if (quizWentWell) {
+            sound.play(Sfx.FANFARE)
+            haptics.celebrate()
+        } else {
+            sound.play(Sfx.RESCUE)
+        }
+    }
 
     Scaffold(containerColor = Color.Transparent) { paddingValues ->
         Box(
@@ -1873,13 +1733,7 @@ fun QuizResultScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(com.example.R.raw.confetti))
-            LottieAnimation(
-                composition = composition,
-                iterations = LottieConstants.IterateForever,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = androidx.compose.ui.layout.ContentScale.Crop
-            )
+            com.example.ui.kids.ConfettiOverlay(active = quizWentWell)
 
             Column(
                 modifier = Modifier
@@ -1887,26 +1741,29 @@ fun QuizResultScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.Top
             ) {
                 Spacer(modifier = Modifier.height(48.dp))
 
                 Box(
                     modifier = Modifier
-                        .size(140.dp)
+                        .size(160.dp)
                         .background(
                             brush = Brush.radialGradient(listOf(Color(0xFFFEF7FF), Color(0xFFEADDFF))),
                             shape = CircleShape
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = "👑", fontSize = 80.sp, modifier = Modifier.rotate(multiplier * 0.1f))
+                    Mascot(
+                        state = if (quizWentWell) MascotState.CELEBRATE else MascotState.ENCOURAGE,
+                        modifier = Modifier.size(140.dp)
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Text(
-                    text = "YAY! YOU DID IT! 🎉",
+                    text = if (quizWentWell) "YAY! YOU DID IT! 🎉" else "GOOD TRY! 💪",
                     fontSize = 30.sp,
                     fontWeight = FontWeight.Black,
                     color = SleekPurple,
@@ -1914,16 +1771,23 @@ fun QuizResultScreen(
                 )
 
                 Text(
-                    text = "You completed the $subject quiz!",
+                    text = when {
+                        quizWentWell -> "You completed the $subject quiz!"
+                        endedEarly -> "Let's practice and try $subject again — you're learning!"
+                        else -> "So close! A little more practice with $subject and you'll nail it!"
+                    },
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
                     color = Color(0xFF49454F),
+                    textAlign = TextAlign.Center,
                     modifier = Modifier.padding(top = 4.dp)
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                if (!scratchClaimed) {
+                // Bonus reward only for a quiz that actually went well — matches
+                // the same bar used for the celebration above.
+                if (!scratchClaimed && quizWentWell) {
                     // Show Scratch Card Game
                     Card(
                         shape = RoundedCornerShape(32.dp),
@@ -2023,12 +1887,14 @@ fun QuizResultScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        val animatedScore by animateIntAsState(
-                                            targetValue = score,
-                                            animationSpec = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
-                                            label = "score"
+                                        com.example.ui.kids.ScoreRollUp(
+                                            score = score,
+                                            total = total,
+                                            onTick = {
+                                                sound.play(Sfx.TICK)
+                                                haptics.tick()
+                                            }
                                         )
-                                        Text(text = "$animatedScore / $total", fontSize = 24.sp, fontWeight = FontWeight.Black, color = Color(0xFF21005D))
                                         Text(text = "Correct", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF49454F))
                                     }
                                 }
@@ -2084,8 +1950,18 @@ fun QuizResultScreen(
                         }
                     }
 
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Streak day celebration with weekly calendar
+                    val quizDates = remember { viewModel.preferences.getQuizDates() }
+                    com.example.ui.kids.StreakDayCelebrationCard(
+                        streakCount = viewModel.streakCount,
+                        days = com.example.ui.kids.last7Days(quizDates),
+                        isNewStreakDay = viewModel.isNewStreakDay
+                    )
+
                     Spacer(modifier = Modifier.height(24.dp))
-                    
+
                     if (viewModel.activeQuestions.isNotEmpty() && viewModel.userAnswers.isNotEmpty()) {
                         Text(
                             text = "Detailed Answers Report 📝",
@@ -5440,7 +5316,88 @@ fun ParentSettingsTab(viewModel: QuizViewModel) {
                             }
                         }
                     }
-            
+
+                    // Daily Streak Reminder Section
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = SleekSurfaceVariant),
+                        border = BorderStroke(1.dp, SleekBorderLight)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            val settingsContext = LocalContext.current
+                            var reminderOn by remember { mutableStateOf(viewModel.preferences.reminderEnabled) }
+                            var showPermissionHint by remember { mutableStateOf(false) }
+
+                            val notifPermissionLauncher = rememberLauncherForActivityResult(
+                                ActivityResultContracts.RequestPermission()
+                            ) { granted ->
+                                if (granted) {
+                                    reminderOn = true
+                                    viewModel.preferences.reminderEnabled = true
+                                    com.example.notifications.ReminderScheduler.scheduleNext(settingsContext)
+                                    showPermissionHint = false
+                                } else {
+                                    reminderOn = false
+                                    viewModel.preferences.reminderEnabled = false
+                                    showPermissionHint = true
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Daily Streak Reminder 🔥",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = SleekPurple
+                                    )
+                                    Text(
+                                        text = "A friendly reminder around 6:30 PM if the daily quiz hasn't been done yet.",
+                                        fontSize = 13.sp,
+                                        color = Color(0xFF49454F),
+                                        lineHeight = 18.sp
+                                    )
+                                }
+                                Switch(
+                                    checked = reminderOn,
+                                    onCheckedChange = { wantOn ->
+                                        if (wantOn) {
+                                            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                                                notifPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                                            } else {
+                                                reminderOn = true
+                                                viewModel.preferences.reminderEnabled = true
+                                                com.example.notifications.ReminderScheduler.scheduleNext(settingsContext)
+                                            }
+                                        } else {
+                                            reminderOn = false
+                                            viewModel.preferences.reminderEnabled = false
+                                            com.example.notifications.ReminderScheduler.cancel(settingsContext)
+                                        }
+                                    }
+                                )
+                            }
+                            if (showPermissionHint) {
+                                Text(
+                                    text = "Notifications are blocked. Enable them for KidQuiz in your phone's Settings to use reminders.",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFFBA1A1A),
+                                    lineHeight = 16.sp
+                                )
+                            }
+                        }
+                    }
+
                     // Subject Custom Timers Section
                     Card(
                         shape = RoundedCornerShape(20.dp),
@@ -5919,4 +5876,6 @@ fun androidx.compose.ui.graphics.drawscope.DrawScope.drawCloudAt(x: Float, y: Fl
         cornerRadius = CornerRadius(r, r)
     )
 }
+
+
 

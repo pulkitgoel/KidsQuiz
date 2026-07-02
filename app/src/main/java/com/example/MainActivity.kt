@@ -15,6 +15,10 @@ class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
+    // Re-arm the daily streak reminder chain (idempotent: unique work + REPLACE)
+    if (viewModel.preferences.reminderEnabled) {
+      com.example.notifications.ReminderScheduler.scheduleNext(this)
+    }
     setContent {
       MyApplicationTheme {
         QuizAppUI(viewModel = viewModel)
